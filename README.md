@@ -10,8 +10,10 @@ If you want to get it working. grep the codebase for "some_password" and replace
 
 When I quit working on this, I had already written some part of my own OpenSocial parser, so there is minimal support for OpenSocial apps. Only the gadget spec is implemented as per what I faintly remember, so Google Gadgets can be run on this easily. There are a couple examples in the __appstore__ directory.
 
-## Screenshots
+## Screenshots (All taken in 2008, so don't blame me if it looks different now)
 
+### This is what it looked like
 ![Dashboard](https://github.com/HashNuke/Cafecamp/raw/master/pics/screenshot.png "Dashboard")
 
+### I must have been fooling around with the CSS for different colors. Shows me re-arranging an app, the cursor isn't visible. And ya it was developed on Windows. Kill me now!
 ![OpenSocial app drag-drop](https://github.com/HashNuke/Cafecamp/raw/master/pics/my_profile_app_rearranging_view.png "OpenSocial app re-arranging")

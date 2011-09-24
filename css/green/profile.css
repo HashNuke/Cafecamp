@@ -1,0 +1,499 @@
+body
+{
+    font-family:sans-serif;
+    font-size:12px;
+    margin:0.5em;
+}
+
+#appout
+{
+	padding: 0px 5px 5px 5px;
+	width:260px;
+}
+
+#appout-about
+{
+	padding: 0px 5px 5px 5px;
+}
+
+#appsetdock
+{
+	font-weight:normal;
+}
+
+#appdiv
+{
+	border-top:1px solid #C8E3AC;
+	border-right:1px solid #EEF7E6;
+	border-left:1px solid #EEF7E6;
+	border-bottom:1px solid #EEF7E6;
+}
+
+#morelink
+{
+	text-decoration: none;
+}
+
+.appholder
+{
+	width: 260px;
+	height: 25px;
+	background: #ffffff;
+	border:2px dashed #cccccc;
+	background: #eeeeee;
+	opacity:.75;
+	filter: alpha(opacity=75);
+	-moz-opacity: 0.75;
+}
+
+#apptitle
+{
+	background: #EEF7E6;
+	font-weight: bold;
+	color: #009933;
+	padding:4px 4px 4px 4px;
+}
+
+#ddhelp
+{
+	border-right: 4px solid #C8E3AC;
+	border-left: 4px solid #C8E3AC;
+	border-bottom: 2px solid #C8E3AC;
+	border-top: 2px solid #C8E3AC;
+	background: #C8E3AC;
+	font-size: 11px;
+	font-weight: bold;
+	color: #FCFEFA;
+	padding:4px 4px 4px 4px;
+	text-align: center;
+	
+}
+	
+#ddhelp2
+{	
+	border: 1px solid #FFEA99;
+	background: #FFFFCC;
+	font-weight: bold;
+	color: #000000;
+	padding:4px 4px 4px 4px;
+}
+
+#prfnav
+{
+	text-align: center;
+}
+
+#prfnav a
+{
+	text-decoration: none;
+	padding: 2px 2px 2px 20px;
+    font-size: 12px;
+	font-weight: normal;
+}
+
+#theimg
+{
+	padding:2px 2px 2px 2px;
+}
+
+
+#bqt
+{
+	color:#cccccc;
+	font-size:20px;
+}
+
+#appct
+{
+	padding: 4px 4px 4px 4px;
+}
+
+input.editMode {
+background-color : #E5ECFF;
+border:1px solid #A8BFFF;
+}
+textarea.editMode {
+background-color : #E5ECFF;
+border:1px solid #A8BFFF;
+}
+.savingAjaxWithBackground {
+background-color : #E5ECFF;
+border:1px solid #A8BFFF;
+}
+
+ul#appcol1
+{
+	list-style: none;
+	padding:0;
+}
+
+ul#appcol2
+{
+	list-style: none;
+	padding:0;
+}
+
+td 
+{
+    font-family:sans-serif;
+    font-size:12px;
+}
+
+#cafecamp_logo
+{
+    border-right:1px solid #F3FBEA;
+}
+
+a
+{
+    color:#0066cc;
+}
+
+input#searchbox
+{
+    border:1px solid #FEDD92;
+    background:#FFEFCC;
+    padding:2px 2px 2px 2px;
+}
+
+input#searchbox:focus
+{
+    border:2px solid #FEDD92;
+    background:#FFFFFF;
+    padding:2px 2px 2px 2px;
+}
+
+.pagepack
+{
+    font-family:sans-serif;
+    font-size:12px;
+    padding:0px;
+    width:800px;
+}
+
+.pageheader
+{
+    font-size:13px;
+    background:#ffffff;
+    border-bottom:1px solid #C8E3AC;
+    border-left:1px solid #C8E3AC;
+    border-right:1px solid #C8E3AC;
+    padding:0px;
+    text-align:left;
+}
+    
+#packheader
+{
+    border-bottom:3px solid #EEF7E6;
+    border-left:3px solid #EEF7E6;
+    border-right:3px solid #EEF7E6;
+}
+
+.box
+{
+    font-size:13px;
+    background:#ffffff;
+    border-top:1px solid #C8E3AC;
+    border-bottom:1px solid #C8E3AC;
+    border-left:1px solid #C8E3AC;
+    border-right:1px solid #C8E3AC;
+    padding:5px 5px 5px 5px;
+    text-align:left;
+}
+    
+#packbox
+{
+    border-top:3px solid #EEF7E6;
+    border-bottom:3px solid #EEF7E6;
+    border-left:3px solid #EEF7E6;
+    border-right:3px solid #EEF7E6;
+}
+
+#boxtitle
+{
+    padding: 0px 5px 5px 5px;
+    color: #77B33C;
+    font-weight: bold;
+    text-align: center;
+}
+
+#briefinfo
+{
+    color:#666666;
+}
+
+#tabcontent
+{
+    color:#000000;
+}
+
+#friendsbox
+{
+    text-align:center;
+}
+
+#navlist a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#userpanel
+{
+    background: #F3FBEA;
+    padding: 4px 4px 4px 4px;
+    text-align: right;
+    font-size: 12px;
+}
+
+#userpanel a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+a#logoutlink
+{
+    color: #CC0033;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#shouttext
+{
+    color: #666666;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+#shouttime
+{
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#greenbox
+{
+	background:#F3FBEA;
+	border:1px solid #C8E3AC;
+	padding:3px 3px 3px 3px;
+}
+
+#contentbox
+{
+	padding:3px;
+}
+
+input#bigtext
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}
+
+#loginlabel
+{
+	border-bottom:1px solid #C8E3AC;
+	padding:3px 3px 3px 3px;
+	font-size:15px;
+	text-align:center;
+	font-weight:bold;
+}
+
+.submit input, .submit input:focus, .button {
+	background: url("../images/fade-butt.png");
+	border: 3px double #999999;
+	border-left-color: #cccccc;
+	border-top-color: #cccccc;
+	color: #555555;
+	padding: 0.25em;
+	font-weight:bold;
+}
+
+.submit input:active, .button:active {
+	background: #f4f4f4;
+	border: 3px double #cccccc;
+	border-left-color: #999999;
+	border-top-color: #999999;
+}
+
+#plinks{
+	font-size:20px;
+}
+
+#wrongpass
+{
+	background:#FED6DA;
+	text-align:center;
+	padding:3px 3px 3px 3px;
+	color:#C10202;
+	font-weight:bold;
+}
+
+a#speciallink
+{
+        text-decoration:none;
+}
+
+#pagetitle
+{    
+	background:#EEF7E6;
+	border-top:1px solid #C8E3AC;
+    text-align:center;
+	padding:2px 2px 2px 2px;
+	font-family:sans-serif;
+	font-size:18px;
+	font-weight:bold;
+}
+
+a#boxedlink
+{
+    text-decoration:none;
+    font-weight:bold;
+    color:#000000;
+}
+
+#whiteline
+{
+    border-bottom:2px solid #ffffff;
+}
+
+#frbox
+{
+    background: #F3FBEA;
+}
+
+#gsnippet
+{
+    color: #888888;    
+}
+
+select
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}
+
+/* .yui-navset defaults to .yui-navset-top */
+.yui-skin-sam .yui-navset .yui-nav,
+.yui-skin-sam .yui-navset .yui-navset-top .yui-nav { /* protect nested tabviews from other orientations */
+    border: solid #C8E3AC; /* color between tab list and content */
+    border-width:0 0 5px;
+    Xposition:relative;
+    zoom:1;
+}
+
+.yui-skin-sam .yui-navset .yui-nav li,
+.yui-skin-sam .yui-navset .yui-navset-top .yui-nav li {
+    margin:0 0.16em 0 0; /* space between tabs */
+    padding:1px 0 0; /* gecko: make room for overflow */
+    zoom:1;
+}
+
+.yui-skin-sam .yui-navset .yui-nav .selected,
+.yui-skin-sam .yui-navset .yui-navset-top .yui-nav .selected {
+    margin:0 0.16em -1px 0; /* for overlap */
+}
+
+.yui-skin-sam .yui-navset .yui-nav a,
+.yui-skin-sam .yui-navset .yui-navset-top .yui-nav a {
+    background:#EEF7E6; /* tab background */
+    border:solid #C8E3AC;
+    border-width:0 1px;
+    color:#666666;
+    font-size:85%;
+    
+    text-decoration:none;
+}
+
+.yui-skin-sam .yui-navset .yui-nav a em,
+.yui-skin-sam .yui-navset .yui-navset-top .yui-nav a em {
+    border:solid #C8E3AC;
+    border-width:1px 0 0;
+    cursor:hand;
+    padding:0.25em .75em;
+    left:0; right: 0; bottom: 0; /* protect from other orientations */
+    top:-1px; /* for 1px rounded corners */
+    position:relative;
+}
+
+.yui-skin-sam .yui-navset .yui-nav .selected a,
+.yui-skin-sam .yui-navset .yui-nav .selected a:focus, /* no focus effect for selected */
+.yui-skin-sam .yui-navset .yui-nav .selected a:hover { /* no hover effect for selected */
+    background:#C8E3AC; /* selected tab background */
+    color:#000000;
+}
+
+.yui-skin-sam .yui-navset .yui-nav a:hover,
+.yui-skin-sam .yui-navset .yui-nav a:focus {
+    background:#EEF7E6; /* selected tab background */
+    outline:0;
+}
+
+.yui-skin-sam .yui-navset .yui-nav .selected a em {
+    padding:0.35em 0.75em; /* raise selected tab */
+}
+
+.yui-skin-sam .yui-navset .yui-nav .selected a,
+.yui-skin-sam .yui-navset .yui-nav .selected a em {
+    border-color:#C8E3AC; /* selected tab border color */
+}
+
+.yui-skin-sam .yui-navset .yui-content {
+    background:#FCFEFA; /* content background color */
+}
+
+.yui-skin-sam .yui-navset .yui-content,
+.yui-skin-sam .yui-navset .yui-navset-top .yui-content {
+    background:#EEF7E6;
+    border:1px solid #C8E3AC; /* content border */
+    border-top-color:#C8E3AC; /* different border color */
+    padding:0.25em 0.5em; /* content padding */
+}
+
+
+/* ----- tool tip specific styles ----- */
+#theToolTip{
+position: absolute;
+left: -300px;
+width: 200px;
+border: 2px solid #C0C09F;
+padding: 6px 0px 0px 10px;
+background-color: #FFFFCC;
+visibility: hidden;
+z-index: 100;
+/*Remove below line to remove shadow. Below line should always appear last within this CSS*/
+filter: progid:DXImageTransform.Microsoft.Shadow(color=gray,direction=135,strength=4);
+}
+
+#ToolTipPointer{
+position:absolute;
+left: -300px;
+z-index: 101;
+visibility: hidden;
+}
+
+#theToolTip p{
+font-size: 1.1em;
+color: #333333;
+line-height:1.4em;
+margin-right:10px;
+margin-top:0;
+}
+
+#ToolTipTextWrap {
+font-weight:bold;
+font-size: 1.2em;
+color: #592C16;
+margin-right:10px;
+}
+
+/* ----- end of tool tip specific styles ----- */

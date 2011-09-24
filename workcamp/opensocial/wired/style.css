@@ -1,0 +1,246 @@
+body
+{
+    font-family:sans-serif;
+    font-size:12px;
+}
+
+#appout
+{
+	padding: 0px 5px 5px 5px;
+	width:580px;
+}
+
+#appout-about
+{
+	padding: 0px 5px 5px 5px;
+}
+
+#appsetdock
+{
+	font-weight:normal;
+	padding:3px 0px 0px 10px;
+	background: #E5ECF9;
+	color: #0066CC;
+}
+
+#appdiv
+{
+	border-top:1px solid #87ADDA;
+}
+
+#morelink
+{
+	text-decoration: none;
+}
+
+.appholder
+{
+	width: 540px;
+	height: 25px;
+	border:2px dashed #cccccc;
+	background: #eeeeee;
+	opacity:.75;
+	filter: alpha(opacity=75);
+	-moz-opacity: 0.75;
+}
+
+#apptitle
+{
+	background: #E5ECF9;
+	font-weight: bold;
+	color: #0066CC;
+	padding:4px 4px 4px 4px;
+}
+
+
+
+#bqt
+{
+	color:#cccccc;
+	font-size:20px;
+}
+
+#appct
+{
+	padding: 4px 4px 4px 4px;
+}
+
+ul#appcol
+{
+	list-style: none;
+	padding:0px 0px 0px 0px;
+}
+
+td 
+{
+    font-family:sans-serif;
+    font-size:12px;
+}
+
+a
+{
+    color:#0066cc;
+}
+
+input#searchbox
+{
+    border:1px solid #FEDD92;
+    background:#FFEFCC;
+    padding:2px 2px 2px 2px;
+}
+
+input#searchbox:focus
+{
+    border:1px solid #FEDD92;
+    background:#FFFFFF;
+    padding:2px 2px 2px 2px;
+}
+
+    
+#packheader
+{
+    border-bottom:3px solid #E5ECF9;
+    border-left:3px solid #E5ECF9;
+    border-right:3px solid #E5ECF9;
+}
+
+.box
+{
+    font-size:13px;
+    background:#ffffff;
+    border-top:1px solid #87ADDA;
+    border-bottom:1px solid #87ADDA;
+    border-left:1px solid #87ADDA;
+    border-right:1px solid #87ADDA;
+    padding:5px 5px 5px 5px;
+    text-align:left;
+}
+    
+#packbox
+{
+    border-top:3px solid #E5ECF9;
+    border-bottom:3px solid #E5ECF9;
+    border-left:3px solid #E5ECF9;
+    border-right:3px solid #E5ECF9;
+}
+
+#boxtitle
+{
+    padding: 0px 5px 5px 5px;
+    color: #77B33C;
+    font-weight: bold;
+    text-align: center;
+}
+
+#briefinfo
+{
+    color:#666666;
+}
+
+#tabcontent
+{
+    color:#000000;
+}
+
+#friendsbox
+{
+    text-align:center;
+}
+
+#navlist a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#userpanel
+{
+    background: #EAF3FB;
+    padding: 4px 4px 4px 4px;
+    text-align: right;
+    font-size: 12px;
+}
+
+#userpanel a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+a#logoutlink
+{
+    color: #CC0033;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#shouttext
+{
+    color: #666666;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+#shouttime
+{
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#greenbox
+{
+	background:#EAF3FB;
+	border:1px solid #87ADDA;
+	padding:3px 3px 3px 3px;
+}
+
+#contentbox
+{
+	padding:3px;
+}
+
+input#bigtext
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}
+
+
+a#speciallink
+{
+        text-decoration:none;
+}
+
+
+a#boxedlink
+{
+    text-decoration:none;
+    font-weight:bold;
+    color:#000000;
+}
+
+#whiteline
+{
+    border-bottom:2px solid #ffffff;
+}
+
+
+#gsnippet
+{
+    color: #888888;    
+}
+
+select
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}

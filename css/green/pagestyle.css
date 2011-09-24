@@ -1,0 +1,262 @@
+body
+{
+    font-family:sans-serif;
+    font-size:12px;
+    margin:0.5em;
+}
+
+td 
+{
+    font-family:sans-serif;
+    font-size:12px;
+}
+
+#cafecamp_logo
+{
+    border-right:1px solid #F3FBEA;
+}
+
+a
+{
+    color:#0066cc;
+}
+
+input#searchbox
+{
+    border:1px solid #FEDD92;
+    background:#FFEFCC;
+    padding:2px 2px 2px 2px;
+}
+
+input#searchbox:focus
+{
+    border:2px solid #FEDD92;
+    background:#FFFFFF;
+    padding:2px 2px 2px 2px;
+}
+
+.pagepack
+{
+    font-family:sans-serif;
+    font-size:12px;
+    padding:0px;
+    width:800px;
+}
+
+.pageheader
+{
+    font-size:13px;
+    background:#ffffff;
+    border-bottom:1px solid #C8E3AC;
+    border-left:1px solid #C8E3AC;
+    border-right:1px solid #C8E3AC;
+    padding:0px;
+    text-align:left;
+}
+    
+#packheader
+{
+    border-bottom:3px solid #EEF7E6;
+    border-left:3px solid #EEF7E6;
+    border-right:3px solid #EEF7E6;
+}
+
+.box
+{
+    font-size:13px;
+    background:#ffffff;
+    border-top:1px solid #C8E3AC;
+    border-bottom:1px solid #C8E3AC;
+    border-left:1px solid #C8E3AC;
+    border-right:1px solid #C8E3AC;
+    padding:5px 5px 5px 5px;
+    text-align:left;
+}
+    
+#packbox
+{
+    border-top:3px solid #EEF7E6;
+    border-bottom:3px solid #EEF7E6;
+    border-left:3px solid #EEF7E6;
+    border-right:3px solid #EEF7E6;
+}
+
+#boxtitle
+{
+    padding: 0px 5px 5px 5px;
+    color: #77B33C;
+    font-weight: bold;
+    text-align: center;
+}
+
+#briefinfo
+{
+    color:#666666;
+}
+
+#tabcontent
+{
+    color:#000000;
+}
+
+#friendsbox
+{
+    text-align:center;
+}
+
+#navlist a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#userpanel
+{
+    background: #F3FBEA;
+    padding: 4px 4px 4px 4px;
+    text-align: right;
+    font-size: 12px;
+}
+
+#userpanel a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+a#logoutlink
+{
+    color: #CC0033;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#shouttext
+{
+    color: #666666;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+#shouttime
+{
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#greenbox
+{
+	background:#F3FBEA;
+	border:1px solid #C8E3AC;
+	padding:3px 3px 3px 3px;
+}
+
+#contentbox
+{
+	padding:3px;
+}
+
+input#bigtext
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}
+
+#loginlabel
+{
+	border-bottom:1px solid #C8E3AC;
+	padding:3px 3px 3px 3px;
+	font-size:15px;
+	text-align:center;
+	font-weight:bold;
+}
+
+.submit input, .submit input:focus, .button {
+	background: url("../images/fade-butt.png");
+	border: 3px double #999999;
+	border-left-color: #cccccc;
+	border-top-color: #cccccc;
+	color: #555555;
+	padding: 0.25em;
+	font-weight:bold;
+}
+
+.submit input:active, .button:active {
+	background: #f4f4f4;
+	border: 3px double #cccccc;
+	border-left-color: #999999;
+	border-top-color: #999999;
+}
+
+#plinks{
+	font-size:20px;
+}
+
+#wrongpass
+{
+	background:#FED6DA;
+	text-align:center;
+	padding:3px 3px 3px 3px;
+	color:#C10202;
+	font-weight:bold;
+}
+
+a#speciallink
+{
+        text-decoration:none;
+}
+
+#pagetitle
+{
+    
+	background:#EEF7E6;
+	border-top:1px solid #C8E3AC;
+        text-align:center;
+        padding:2px 2px 2px 2px;
+        font-family:sans-serif;
+        font-size:15px;
+        font-weight:bold;
+}
+
+a#boxedlink
+{
+    text-decoration:none;
+    font-weight:bold;
+    color:#000000;
+}
+
+#whiteline
+{
+    border-bottom:2px solid #ffffff;
+}
+
+#frbox
+{
+    background: #F3FBEA;
+}
+
+#gsnippet
+{
+    color: #888888;    
+}
+
+select
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}
+
+#searchmatch
+{
+	background:#eeeeee;
+	padding: 3px 3px 3px 3px;
+}

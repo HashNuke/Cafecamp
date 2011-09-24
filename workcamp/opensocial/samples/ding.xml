@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Module>
+  <ModulePrefs title="Dings Bums" description="Dies ist meine Beschreibung">
+    <Require feature="opensocial-0.6"/>
+  </ModulePrefs>
+  <Content type="html">
+  <![CDATA[
+    <div id="main"></div>
+    <script type="text/javascript">
+      gadgets.util.registerOnLoadHandler(request);
+
+      function request() {
+        var req = opensocial.newDataRequest();
+
+        var opt_params = { };
+        opt_params[opensocial.DataRequest.PeopleRequestFields.PROFILE_DETAILS] = [
+          opensocial.Person.Field.PROFILE_URL
+        ];
+
+        req.add(
+            req.newFetchPersonRequest(
+                opensocial.DataRequest.PersonId.VIEWER, 
+                opt_params), 
+            "viewer");
+        req.add(
+            req.newFetchPeopleRequest(
+                opensocial.DataRequest.Group.VIEWER_FRIENDS, 
+                opt_params), 
+            "viewer_friends");
+        req.send(response);
+      }
+
+      function response(data) {
+        var viewer = data.get("viewer").getData();
+        var name = viewer.getDisplayName();
+        var thumb = viewer.getField(opensocial.Person.Field.THUMBNAIL_URL);
+        var profile = viewer.getField(opensocial.Person.Field.PROFILE_URL);
+        
+        var html = '<img src="' + thumb + '"/>' + 
+                   '<a href="' + profile + '" target="_top">' + name + '</a>';
+
+        html += '<hr>'; 
+        
+        var viewer_friends = data.get("viewer_friends").getData();
+        viewer_friends.each(function(person) {
+          var thumb = person.getField(opensocial.Person.Field.THUMBNAIL_URL);
+          var profile = person.getField(opensocial.Person.Field.PROFILE_URL);
+          html += '<a href="' + profile + '" target="_top" style="float:left">' +
+                  '<img src="' + thumb + '"/>' +
+                  '</a>'; 
+        });
+
+        document.getElementById('main').innerHTML = html;
+      } 
+      </script>
+  ]]>
+  </Content>
+</Module>

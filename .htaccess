@@ -1,0 +1,3 @@
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^italk.jaxfu.com
+RewriteRule (.*) http://www.italk.jaxfu.com/$1 [R=301,L]

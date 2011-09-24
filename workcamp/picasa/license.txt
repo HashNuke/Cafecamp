@@ -1,0 +1,4 @@
+The code contained here is for example purposes only and should not be used in any project,
+free or commercial, without the written permission of the respective copyright holder.
+
+Copyright 2005-2006 by Jeremy Johnstone (except where noted)

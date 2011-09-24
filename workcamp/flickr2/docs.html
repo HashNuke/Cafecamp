@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <title>Flickr API Parser</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  </head>
+  <body bgcolor="#DDDDDD">
+<font size="2">
+<center><h1>Flickr API Parser</h1></center>
+<B>AUTHOR</B>: Piotr Maliński<BR>
+<B>Contact</B>: <a href="mailto:riklaunim@gmail.com">riklaunim@gmail.com</a><BR>
+<B>Site</B>: <a href="http://www.cms.rk.edu.pl">http://www.cms.rk.edu.pl</a> - Polish<BR>
+<B>License</B>: LGPL<BR>
+<B>Requirements</B>: PHP5 (SimpleXML)<BR><BR>
+
+This class wraps up the <a href="http://www.flickr.com/services/api/" target="_blank">flickr api</a> and returns php array/strings with the data. It doesn't wraps all the API methods but it can be easily extended :)<BR><BR>
+
+<LI><B>HOW TO USE</B></LI>
+<div style="border: 1px dashed #2f6fab; color: Black; background-color: #f9f9f9; padding:2px;"><pre>$a = new flickr('MY FLICKR API KEY');
+print_r($a->getRecent(10));</pre></div>
+
+<BR><BR>
+
+<B><U>METHODS</U></B>:<BR>
+<B><font color="blue">search($query)</font></B> - returns info about images that math the query (string). Returns an ARRAY. (<a href="http://www.flickr.com/services/api/flickr.photos.search.html" target="_blank">on Flickr</a>)<BR>
+<B><font color="blue">getContext($photo_id)</font></B> - returns info about next and previous image to that specified by photo_id (int). Returns an ARRAY. (<a href="http://www.flickr.com/services/api/flickr.photos.getContext.html" target="_blank">on Flickr</a>)<BR>
+<B><font color="blue">getSizes($photo_id)</font></B> - returns size info about image by given photo_id (int). Returns an ARRAY. (<a href="http://www.flickr.com/services/api/flickr.photos.getSizes.html" target="_blank">on Flickr</a>)<BR>
+<B><font color="blue">getInfo($photo_id)</font></B> - returns info about image by given photo_id (int).  Returns an ARRAY. (<a href="http://www.flickr.com/services/api/flickr.photos.getInfo.html" target="_blank">on Flickr</a>)<BR>
+<B><font color="blue">getRecent($per_page)</font></B> - returns $per_page(int) latest images. Returns an ARRAY. (<a href="http://www.flickr.com/services/api/flickr.photos.getRecent.html" target="_blank">on Flickr</a>)<BR><BR>
+
+<B><font color="blue">createAuthLink($secret, $perms = 'write')</font></B> - Returns a STRING, a link that needs to be used for Flickr authentication to get a frob. $secret is your secret id and $perms are the perms you need<BR>
+<B><font color="blue">getToken($frob, $secret)</font></B> - Returns a STRING, a token based on the frob.<BR><BR>
+
+See examples :) You need to edit them and insert your Flickr API key<BR><BR>
+
+
+<H2>How to add more Flickr Api methods to the class?</H2>
+It's simple. Look at this code:
+<pre>public function getContext($photo_id)
+	{
+	$x = simplexml_load_file('http://www.flickr.com/services/rest/?method=flickr.photos.getContext&photo_id='.$photo_id.'&api_key='.$this->api_key);
+	$ret = array('prev' => array('id' => (int)$x->prevphoto['id'], 'title' => (string)$x->prevphoto['title'], 'url' => (string)$x->prevphoto['url'], 'thumb' => (string)$x->prevphoto['thumb']), 'next' => array('id' => (int)$x->nextphoto['id'], 'title' => (string)$x->nextphoto['title'], 'url' => (string)$x->nextphoto['url'], 'thumb' => (string)$x->nextphoto['thumb']));
+	return $ret;
+	}</pre>
+1. read the XML<BR>
+2. return needed data to an array or string :)<BR>
+a) file_get_contents and highlight_string/file could be very usefull
+</font>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<Module>
+  <ModulePrefs title="hello world example">
+	<require feature="opensocial-0.7"/>
+	<optional feature="tabs"/>
+	<optional feature="minimessage"/>
+	<optional feature="dynamic-height"/>
+	<optional feature="flash"/>
+	<optional feature="minimessage"/>
+  </ModulePrefs> 
+  <userprefs name="MyVar" datatype="string"/>
+  <Content type="html">
+     <![CDATA[ 
+       Hello, world!
+     ]]>
+
+  </Content> 
+</Module>

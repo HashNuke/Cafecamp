@@ -1,0 +1,4886 @@
+diff -urN php-old/README php-new/README
+--- php-old/README	2008-03-02 16:44:10.000000000 +0100
++++ php-new/README	2008-03-02 16:32:45.000000000 +0100
+@@ -1,31 +1,17 @@
+-Running:
+-  Use Apache and mod_proxy with bcmath enabled pointed at this directory
++Installing and Running The PHP Shindig Gadget Server
++============================================
+ 
+-How It Works:
+-  # Basic configuration is in the config.php. Set up the gadget, the
+-    host domain, and the domain to use for proxy calls there.
+-  # index.php loads comframe.php in an iframe
+-  # comframe.php creates a XARK (Cross Application Request Token) and then
+-    loads container.php in an iframe, passing in the XARK
+-  # container.php validates the XARK and loads the module, sets up the 
+-    javascript container, and loads the gadget, rendering the gadget as its
+-    output.
+-  # Javascript API calls presently do not work
+-  
+-  The double iframe is to allow for inter-iframe communication, presently
+-  specialized for just adjusting iframe height.
+-  
+-  This implementation is basically a prototype, not a fully functioning
+-  implementation. Hopefully it can help get things moving towards a fully
+-  functioning server, though!
+-
+-Major TODO Items:
+-* Replace RSA.class.php with OpenSSL
+-* Support Profiles
+-* Support Friends
+-* Support Persistence
+-* Support Activity Stream
+-* Switch over to the Shindig Javascript
+-* Support OpenSocial 0.6
+-* Documentation
+-* Support proxied API requests (makeRequest)
++1) Make sure you have PHP 5.x installed and have the simplexml and json extentions enabled; It also
++   requires apache with .htaccess and mod_rewrite support
++
++2) Copy the files to your web root, and edit the config.php WEB_PREFIX and DEBUG settings
++   to your liking 
++
++3) Hit server at http://<yourhost>/gadgets/ifr?url=<gadget-url>
++   Example: http://<yourhost>/gadgets/ifr?url=http://www.labpixies.com/campaigns/todo/todo.xml
++   Or hit the sample container at http://<yourhost>/samplecontainer/samplecontainer.html
++
++
++The PHP source of the gadget server resides in gadgets/src.
++
++For more information, see http://incubator.apache.org/projects/shindig.html
+diff -urN php-old/RSA.class.php php-new/RSA.class.php
+--- php-old/RSA.class.php	2008-03-02 16:44:10.000000000 +0100
++++ php-new/RSA.class.php	1970-01-01 01:00:00.000000000 +0100
+@@ -1,205 +0,0 @@
+-<?php
+-/*
+-* Rivest/Shamir/Adelman (RSA) compatible functions
+-* to generate keys and encode/decode
+-*
+-*With a great thanks to:
+-*Ilya Rudev <www@polar-lights.com>
+-*Glenn Haecker <ghaecker@idworld.net>
+-*Segey Semenov <sergei2002@mail.ru>
+-*Suivan <ssuuii@gmx.net>
+-*
+-*Prime-Numbers.org provide small prime numbers list.
+-*You can browse all small prime numbers(small than 10,000,000,000) there.
+-*There's totally 455042511 prime numbers.
+-*http://www.prime-numbers.org/
+-*/
+-
+-class RSA{
+-    /*
+-    * Function for generating keys. Return array where
+-    * $array[0] -> modulo N
+-    * $array[1] -> public key E
+-    * $array[2] -> private key D
+-    * Public key pair is N and E
+-    * Private key pair is N and D
+-    */
+-    public function generate_keys ($p, $q, $show_debug=0){
+-          $n = bcmul($p, $q);
+-      
+-          //m (we need it to calculate D and E)
+-          $m = bcmul(bcsub($p, 1), bcsub($q, 1));
+-      
+-          // Public key  E
+-          $e = $this->findE($m);
+-      
+-          // Private key D
+-          $d = $this->extend($e,$m);
+-      
+-          $keys = array ($n, $e, $d);
+-
+-          if ($show_debug) {
+-                echo "P = $p<br>Q = $q<br><b>N = $n</b> - modulo<br>M = $m<br><b>E = $e</b> - public key<br><b>D = $d</b> - private key<p>";
+-          }
+-      
+-          return $keys;
+-    }
+-
+-    /*
+-    * Standard method of calculating D
+-    * D = E-1 (mod N)
+-    * It's presumed D will be found in less then 16 iterations
+-    */
+-    private function extend ($Ee,$Em) {
+-          $u1 = '1';
+-          $u2 = '0';
+-          $u3 = $Em;
+-          $v1 = '0';
+-          $v2 = '1';
+-          $v3 = $Ee;
+-
+-          while (bccomp($v3, 0) != 0) {
+-                $qq = bcdiv($u3, $v3, 0);
+-                $t1 = bcsub($u1, bcmul($qq, $v1));
+-                $t2 = bcsub($u2, bcmul($qq, $v2));
+-                $t3 = bcsub($u3, bcmul($qq, $v3));
+-                $u1 = $v1;
+-                $u2 = $v2;
+-                $u3 = $v3;
+-                $v1 = $t1;
+-                $v2 = $t2;
+-                $v3 = $t3;
+-                $z  = '1';
+-          }
+-
+-          $uu = $u1;
+-          $vv = $u2;
+-
+-          if (bccomp($vv, 0) == -1) {
+-                $inverse = bcadd($vv, $Em);
+-          } else {
+-                $inverse = $vv;
+-          }
+-
+-          return $inverse;
+-    }
+-
+-    /*
+-    * This function return Greatest Common Divisor for $e and $m numbers
+-    */
+-    private function GCD($e,$m) {
+-          $y = $e;
+-          $x = $m;
+-
+-          while (bccomp($y, 0) != 0) {
+-                // modulus function
+-            $w = bcsub($x, bcmul($y, bcdiv($x, $y, 0)));;
+-                $x = $y;
+-                $y = $w;
+-          }
+-
+-          return $x;
+-    }
+-
+-    /*
+-    * Calculating E under conditions:
+-    * GCD(N,E) = 1 and 1<E<N
+-    */
+-    private function findE($m){
+-        $e = '3';
+-        if(bccomp($this->GCD($e, $m), '1') != 0){
+-            $e = '5';
+-            $step = '2';
+-
+-            while(bccomp($this->GCD($e, $m), '1') != 0){
+-                $e = bcadd($e, $step);
+-
+-                if($step == '2'){
+-                    $step = '4';
+-                }else{
+-                    $step = '2';
+-                }
+-            }
+-        }
+-
+-        return $e;
+-    }
+-
+-    /*
+-    * ENCRYPT function returns
+-    * X = M^E (mod N)
+-    */
+-    public function encrypt ($m, $e, $n, $s=3) {
+-        $coded   = '';
+-        $max     = strlen($m);
+-        $packets = ceil($max/$s);
+-        
+-        for($i=0; $i<$packets; $i++){
+-            $packet = substr($m, $i*$s, $s);
+-            $code   = '0';
+-
+-            for($j=0; $j<$s; $j++){
+-                $code = bcadd($code, bcmul(ord($packet[$j]), bcpow('256',$j)));
+-            }
+-
+-            $code   = bcpowmod($code, $e, $n);
+-            $coded .= $code.'_';
+-        }
+-
+-          return trim($coded);
+-    }
+-
+-    /*
+-    ENCRYPT function returns
+-    M = X^D (mod N)
+-    */
+-    public function decrypt ($c, $d, $n) {
+-        $coded   = split('_', $c);
+-        $message = '';
+-        $max     = count($coded);
+-
+-        for($i=0; $i<$max; $i++){
+-            $code = bcpowmod($coded[$i], $d, $n);
+-
+-            while(bccomp($code, '0') != 0){
+-                $ascii    = bcmod($code, '256');
+-                $code     = bcdiv($code, '256', 0);
+-                $message .= chr($ascii);
+-            }
+-        }
+-
+-        return $message;
+-    }
+-    
+-    // Digital Signature
+-    public function sign($message, $d, $n){
+-        $messageDigest = md5($message);
+-        $signature = $this->encrypt($messageDigest, $d, $n, 3);
+-        return $signature;
+-    }
+-    
+-    public function prove($message, $signature, $e, $n){
+-        $messageDigest = $this->decrypt($signature, $e, $n);
+-        if($messageDigest == md5($message)){
+-            return true;
+-        }else{
+-            return false;
+-        }
+-    }
+-
+-    public function signFile($file, $d, $n){
+-        $messageDigest = md5_file($file);
+-        $signature = $this->encrypt($messageDigest, $d, $n, 3);
+-        return $signature;
+-    }
+-    
+-    public function proveFile($file, $signature, $e, $n){
+-        $messageDigest = $this->decrypt($signature, $e, $n);
+-        if($messageDigest == md5_file($file)){
+-            return true;
+-        }else{
+-            return false;
+-        }
+-    }
+-}
+-?>
+\ No newline at end of file
+diff -urN php-old/comframe.php php-new/comframe.php
+--- php-old/comframe.php	2008-03-02 16:44:10.000000000 +0100
++++ php-new/comframe.php	1970-01-01 01:00:00.000000000 +0100
+@@ -1,40 +0,0 @@
+-<php?
+-/*
+- * Licensed to the Apache Software Foundation (ASF) under one
+- * or more contributor license agreements.  See the NOTICE file
+- * distributed with this work for additional information
+- * regarding copyright ownership.  The ASF licenses this file
+- * to you under the Apache License, Version 2.0 (the
+- * "License"); you may not use this file except in compliance
+- * with the License.  You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing,
+- * software distributed under the License is distributed on an
+- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+- * KIND, either express or implied.  See the License for the
+- * specific language governing permissions and limitations
+- * under the License.
+- */
+-
+-?><?php require_once 'config.php' ?>
+-<html>
+-<head></head>
+-<body style="border:0;padding:0;margin:0">
+-<?php
+-    require_once 'crypto.php';
+-    $ONE_HOUR = (60 * 60);
+-    $values = array();
+-    $values['url'] =  MODULE_URL;
+-    $values['owner'] = OWNER;
+-    $values['expires'] = time() + $ONE_HOUR;
+-    $values['viewer'] = VIEWER;
+-    $xark = CryptoHelper::encrypt(CryptoHelper::appPrivateKey(),
+-                                  CryptoHelper::appModulo(), $values);
+-
+-    $mode = $_GET['mode'] == 'canvas' ? 'canvas' : 'profile';
+-?>
+-<iframe id="gadgetFrame" name="gadgetFrame" scrolling="auto" frameborder="0"  style="border:0;padding:0;margin:0;width:100%;height:100%;overflow:auto"
+-src="http://<?php echo PROXY_HOST ?>/container.php?xark=<?php echo $xark ?>&amp;mode=<?php echo $mode; ?>&amp;origin=<?php echo SITE_HOST ?>&amp;location=<?php echo urlencode("http://" . SITE_HOST . "/comframe.php"); ?>">
+-</iframe>
+diff -urN php-old/config.php php-new/config.php
+--- php-old/config.php	2008-03-02 16:44:10.000000000 +0100
++++ php-new/config.php	1970-01-01 01:00:00.000000000 +0100
+@@ -1,26 +0,0 @@
+-<?php
+-/*
+- * Licensed to the Apache Software Foundation (ASF) under one
+- * or more contributor license agreements.  See the NOTICE file
+- * distributed with this work for additional information
+- * regarding copyright ownership.  The ASF licenses this file
+- * to you under the Apache License, Version 2.0 (the
+- * "License"); you may not use this file except in compliance
+- * with the License.  You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing,
+- * software distributed under the License is distributed on an
+- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+- * KIND, either express or implied.  See the License for the
+- * specific language governing permissions and limitations
+- * under the License.
+- */
+-?><?php
+-define(PROXY_HOST, "proxy.example.com:8000");
+-define(SITE_HOST, "binky.example.com:8000");
+-define(MODULE_URL, "http://g.ilike.com/gadget/songs_ilike");
+-define(OWNER, "gadget_owner");  // should be person who installed the app
+-define(VIEWER, "current_user"); // should be currently logged in user
+-?>
+diff -urN php-old/container.php php-new/container.php
+--- php-old/container.php	2008-03-02 16:44:10.000000000 +0100
++++ php-new/container.php	1970-01-01 01:00:00.000000000 +0100
+@@ -1,494 +0,0 @@
+-<?php
+-/*
+- * Licensed to the Apache Software Foundation (ASF) under one
+- * or more contributor license agreements.  See the NOTICE file
+- * distributed with this work for additional information
+- * regarding copyright ownership.  The ASF licenses this file
+- * to you under the Apache License, Version 2.0 (the
+- * "License"); you may not use this file except in compliance
+- * with the License.  You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing,
+- * software distributed under the License is distributed on an
+- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+- * KIND, either express or implied.  See the License for the
+- * specific language governing permissions and limitations
+- * under the License.
+- */
+-?><?php require_once 'config.php' ?>
+-<?php
+-// require_once NF_APP_BASE . '/lib/CryptoHelper.php';
+-require_once 'crypto.php';
+-
+-function errorPage($code, $message) {
+-    header("HTTP/1.1 $code Error");
+-    echo $message;
+-}
+-
+-// need to require libcurl stuff!
+-function do_curl_request($url, $postcontents = null) {
+-    error_log("Fetching $url");
+-    $curl = curl_init();
+-    curl_setopt($curl,CURLOPT_URL,$url);
+-    if ($postcontents) {
+-	    curl_setopt($curl,CURLOPT_POST,true);
+-		curl_setopt($curl,CURLOPT_POSTFIELDS,$postcontents);
+-    }
+-    else {
+-        curl_setopt($curl,CURLOPT_GET,true);
+-    }
+-    curl_setopt($curl,CURLOPT_USERAGENT,"Mozilla/4.0 (Compatible; Shindig Remote API)");
+-    curl_setopt($curl, CURLOPT_TIMEOUT, 30);
+-	curl_setopt($curl, CURLOPT_MAXREDIRS, 5);
+-    ob_start();
+-    	$result = curl_exec($curl);
+-
+-        $errno = null;
+-        if ($result == false) {
+-            $errno = curl_errno($curl);
+-            error_log("Error fetching $url : $errno");
+-        }
+-
+-    	$data = ob_get_contents();
+-    	ob_end_clean();
+-
+-    	$retcode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+-    curl_close($curl);
+-    return array('code' => $retcode, 'data' => $data, 'errno' => $errno);
+-}
+-
+-// $appOrigin = $_GET['origin'];
+-// if (preg_match('@[\W]@', $appOrigin)) {
+-//     errorPage(400, 'Bogus origin param: ' . $appOrigin);
+-//     return;
+-// }
+-
+-// $request = do_curl_request('http://' . $appOrigin  . '/gadgets/index/publicKey');
+-// if ($request['errno']) {
+-//     errorPage(500, 'Error fetching content');
+-//     return;
+-// }
+-$publicKey =  array("key" => CryptoHelper::appPublicKey(),
+-                    "modulo" => CryptoHelper::appModulo());
+-
+-$xark = $_GET['xark'];
+-$decryptedData = CryptoHelper::decrypt($publicKey['key'], $publicKey['modulo'], $xark);
+-if (!is_array($decryptedData)) {
+-    errorPage(400, 'Bogus xark param ' . $decryptedData);
+-    return;
+-}
+-
+-if (time() > $decryptedData['expires']) {
+-    errorPage(403, 'Gadget session has expired.  Please reload the page.');
+-    return;
+-}
+-
+-$iframeParentLocation = $_GET['location'];
+-
+-$url = $decryptedData['url'];
+-$gadgetUrl = $url;
+-$embedOwnerName = $decryptedData['owner'];
+-if (isset($decryptedData['viewer']) && $decryptedData['viewer'] !== '') {
+-    $loggedInUser = $decryptedData['viewer'];
+-}
+-
+-
+-error_log('gadgetWrapper: ----------STARTING CALL-------------------------------------');
+-error_log('gadgetWrapper: url = ' . $url);
+-error_log('gadgetWrapper: referer = ' . $_SERVER['HTTP_REFERER']);
+-
+-
+-error_log('gadgetWrapper: starting ext request: ' . time());
+-$request = do_curl_request($url);
+-if ($request['errno']) {
+-    errorPage(500, 'Error fetching gadget XML from ' . $url);
+-    return;
+-}
+-$xml = $request['data'];
+-$retcode = $request['code'];
+-error_log('gadgetWrapper: ext request DONE: ' . time());
+-
+-
+-//$xml = simplexml_load_file($url) or die("gadget not loading");
+-//$xml = file_get_contents($url) or die("gadget not loading");
+-
+-class Simple_Parser
+-{
+-    var $parser;
+-    var $error_code;
+-    var $error_string;
+-    var $current_line;
+-    var $current_column;
+-    var $data = array();
+-    var $datas = array();
+-
+-    function parse($data)
+-    {
+-        $this->parser = xml_parser_create('UTF-8');
+-        xml_set_object($this->parser, $this);
+-        xml_parser_set_option($this->parser, XML_OPTION_SKIP_WHITE, 1);
+-        xml_set_element_handler($this->parser, 'tag_open', 'tag_close');
+-        xml_set_character_data_handler($this->parser, 'cdata');
+-        if (!xml_parse($this->parser, $data))
+-        {
+-            $this->data = array();
+-            $this->error_code = xml_get_error_code($this->parser);
+-            $this->error_string = xml_error_string($this->error_code);
+-            $this->current_line = xml_get_current_line_number($this->parser);
+-            $this->current_column = xml_get_current_column_number($this->parser);
+-        }
+-        else
+-        {
+-            $this->data = $this->data['child'];
+-        }
+-        xml_parser_free($this->parser);
+-    }
+-
+-    function tag_open($parser, $tag, $attribs)
+-    {
+-        $this->data['child'][$tag][] = array('data' => '', 'attribs' => $attribs, 'child' => array());
+-        $this->datas[] =& $this->data;
+-        $this->data =& $this->data['child'][$tag][count($this->data['child'][$tag])-1];
+-    }
+-
+-    function cdata($parser, $cdata)
+-    {
+-        $this->data['data'] .= $cdata;
+-    }
+-
+-    function tag_close($parser, $tag)
+-    {
+-        $this->data =& $this->datas[count($this->datas)-1];
+-        array_pop($this->datas);
+-    }
+-}
+-
+-$xml_parser = new Simple_Parser;
+-$xml_parser->parse($xml);
+-//print_r($xml_parser->data['MODULE'][0]['child']['CONTENT'][0]['data']);
+-
+-$gadgetType = $xml_parser->data['MODULE'][0]['child']['CONTENT'][0][attribs]['TYPE'];
+-$gadgetHeight = $xml_parser->data['MODULE'][0]['child']['MODULEPREFS'][0][attribs]['HEIGHT'];
+-$moduleName = $xml_parser->data['MODULE'][0]['child']['MODULEPREFS'][0][attribs]['TITLE'];
+-//$moduleName = implode(' ', $moduleName);
+-//error_log('mod name=' . $moduleName);
+-if (!$gadgetHeight) {
+-	if ($_GET['mode'] == 'canvas') {
+-		$gadgetHeight = 400;
+-	}
+-	else {//profile view
+-		$gadgetHeight = 200;
+-	}
+-}
+-
+-$user = $embedOwnerName;
+-$app = $moduleName;
+-$appUrlMd5 = base64_encode(md5($url));
+-
+-function getPersonData($user, $appUrlMd5, $xark, $appOrigin) {
+-    // $postcontents = array();
+-    // $postcontents['user'] = $user;
+-    // $postcontents['op'] = 'get-app-data';
+-    // $postcontents['app'] = $appUrlMd5;
+-    // $postcontents['xark'] = $xark;
+-    // $postcontents['origin'] = $appOrigin;
+-    //
+-    //     $request = do_curl_request('http://' . $appOrigin . XN_AtomHelper::$DOMAIN_SUFFIX . '/gadgets/index/backendApi', $postcontents);
+-    // return $request['data'];
+-    return "({})";
+-}
+-
+-$preloadedUserData = getPersonData($embedOwnerName, $appUrlMd5, $xark, $appOrigin);
+-if (isset($loggedInUser)) {
+-	$preloadedViewerData = getPersonData($loggedInUser, $appUrlMd5, $xark, $appOrigin);
+-}
+-else {
+-	$preloadedViewerData = '{}';
+-}
+-
+-error_log('gadgetWrapper: data preload (owner): '.$preloadedUserData);
+-error_log('gadgetWrapper: data preload (viewer): '.$preloadedViewerData);
+-
+-function getObjKey($user, $app)
+-{
+-	return $user . '-' . $app;
+-}
+-
+-function getGadgetAppDataQuery($user, $app)
+-{
+-	global $appOrigin;
+-	$objkey = getObjKey($user, $app);
+-	$contentQuery = XN_Query::create('Content');
+-	$contentQuery->filter('owner->relativeUrl', '=', $appOrigin);
+-	$contentQuery->filter('type', '=', 'GadgetAppData');
+-	$contentQuery->filter('title', '=', $objkey);
+-	error_log($contentQuery->debugHtml());
+-	error_log('apporigin = ' . $appOrigin);
+-	return $contentQuery;
+-}
+-////-----------------HARDWIRED FOR ILIKE/DEMO
+-
+-if ($gadgetType == 'url') {
+-	$gadgetUrl = $xml_parser->data['MODULE'][0]['child']['CONTENT'][0][attribs]['HREF'];
+-?>
+-<iframe frameborder="0" width="340" style="padding: 0; margin: 0;" height="<?php echo $gadgetHeight; ?>"
+-src="<?php echo $gadgetUrl; ?>">
+-</iframe>
+-<?php
+-}
+-else { //it's an HTML gadget
+-	$moduleContent = $xml_parser->data['MODULE'][0]['child']['CONTENT'][0]['data'];
+-?>
+-
+-<script type="text/javascript" src="/js/hash.js"></script>
+-<script type="text/javascript" src="/js/json.js"></script>
+-<script type="text/javascript" src="/js/jquery.js"></script>
+-<script type="text/javascript" src="/js/People.js"></script>
+-<script type="text/javascript" src="/js/ShindigContainer.js"></script>
+-<script type="text/javascript" src="http://o.aolcdn.com/dojo/0.4.2/dojo.js"></script>
+-
+-<script type="text/javascript">
+-window.magic_shindig = 'Shindig';
+-
+-shindig = {};
+-shindig._ = shindig._ || {};
+-shindig._.os = {
+-	'xark': '<?php echo $xark; ?>',
+-	'origin': '<?php echo $appOrigin; ?>'
+-}
+-
+-if(!window.console){
+-	var console = {
+-        init:function(){},
+-		hide:function(){},
+-		show:function(){},
+-		log:function(o){},
+-		clear:function(){},
+-		addLoadEvent:function(func){}
+-	};
+-}
+-
+-var onloadHandler = null;
+-var completedLoading = false;
+-var preloadedUserData = <?php echo $preloadedUserData ? $preloadedUserData : null ?>;
+-var preloadedViewerData = <?php echo $preloadedViewerData ? $preloadedViewerData : null ?>;
+-var hashAppName = '<?php echo $appUrlMd5 ?>';
+-
+-function _IG_RegisterOnloadHandler(fun) {
+-	onloadHandler = fun;
+-}
+-
+-opensocial.registerOnloadHandler = function(fun) {
+-	onloadHandler = fun;
+-};
+-
+-function _gel(data) {
+-	return document.getElementById(data);
+-}
+-
+-function _IG_FetchContent(urlx, callback, refresh) {
+-	opensocial.fetchContent(urlx, callback, refresh);
+-}
+-
+-opensocial.fetchContent = function(urlx, callback, refresh) {
+-	console.log('proxy call URL='+urlx);
+-		dojo.io.bind({url: "/proxy.php?op=proxy&url="+escape(urlx),
+-				 load: function(type,data,evt) { console.log('Received data on IG_Fetch'); callback(data); },
+-				 mimetype: "text/plain" }
+-		);
+-}
+-
+-_IG_Tabs = function(module_id, opt_selected_tab) {}
+-_IG_Tabs.prototype.alignTabs = function(location, space) {}
+-_IG_Tabs.prototype.addTab = function(tabName, opt_domId, opt_callback) {}
+-_IG_Tabs.prototype.addDynamicTab = function(tabName, callback) {}
+-_IG_Tabs.prototype.setSelectedTab = function(tabIndex) {}
+-_IG_Tabs.prototype.moveTab = function(tabIndex1, tabIndex2) {}
+-_IG_Tabs.prototype.numTabs = function() {}
+-_IG_Tabs.prototype.currentTab = function() {};
+-
+-
+-function _IG_Analytics(a,b) {};
+-
+-__MODULE_ID__ = 10;
+-
+- _IG_Prefs = function() {
+-console.log('preloaded data = ');
+-console.log(preloadedUserData);
+-console.log('END preloaded data = ');
+-
+- 	this.data = preloadedUserData || new Array();
+-
+- }
+-
+- _IG_Prefs.prototype.set = function(key, value) {
+- 	if (xnGetViewer().getId() != xnGetOwner().getId()) {
+- 		//don't allow writes if the person logged in is not the owner.
+- 		return;
+- 	}
+- 	onSuccess = function(evaldObj) {
+-
+- 		console.log('success!');
+- 	};
+- 	onError = function(context, msg) {
+- 		console.log('error = ' + msg);
+- 	};
+- 	var handlers = {
+- 		success: onSuccess,
+- 		failure: onError
+- 	};
+- 	var userid = xnGetOwner().getId();
+- 	//var form = new Array();
+- 	content = {'user':  userid, 'op':'update-app-data', 'app': opensocial.Container.get().getAppName(), 'key': key, 'value': value, 'xark': shindig._.os.xark, 'origin': shindig._.os.origin};
+- 	console.log('updatedata = '+content);
+- 	console.log(content);
+- 	shindig.api.post("/gadgets/index/api", content, handlers);
+-
+- 	this.data[key] = value;
+-
+- }
+-
+- _IG_Prefs.prototype.getString = function(key) {
+- 	return this.data[key];
+- }
+-
+-
+- _IG_Prefs.prototype.getBool = function(key) {
+- 	return Boolean(this.data[key]);
+- }
+-
+- function  _IG_AdjustIFrameHeight()
+- {
+-	opensocial.adjustIFrameHeight();
+- }
+-
+- opensocial.adjustIFrameHeight = function()
+- {
+-     <?php if ($iframeParentLocation && strpos($iframeParentLocation, '\\') === FALSE && strpos($iframeParentLocation, '\'') === FALSE) { ?>
+-         var preferredHeight = document.getElementById('__os_gadget_body').scrollHeight;
+-         if (preferredHeight > <?php echo $gadgetHeight ? $gadgetHeight : 200; ?>) {
+-             parent.location = '<?php echo $iframeParentLocation; ?>#__os_iframe_height_' + preferredHeight + '__';
+-         }
+-    <?php } ?>
+- }
+-
+-<?php
+-
+-function getFriendsJSON($screenName)
+-{
+-	$request = do_curl_request("http://" . $_SERVER['HTTP_HOST'] . "/xn/rest/1.0/profile:" . $screenName . "/contact(relationship='friend'&onNing='true')?begin=0&end=25&xn_auth=no");
+-    $jsonText = $request['data'];
+-	return $jsonText ? $jsonText : '{}';
+-}
+-
+-$user = 'brianm'; //isset($loggedInUser) ? XN_Profile::load($loggedInUser) : XN_Profile::current();
+-$owner = null;
+-$userFriends = '{}';
+-$ownerFriends = '{}';
+-
+-$viewerIsAnonymous = true;
+-$viewerIsOwner = false;
+-error_log('gadgetWrapper: embed owner X='.$embedOwnerName);
+-if (isset($loggedInUser)) {
+-	//load friends for this user
+-	//
+-error_log('gadgetWrapper: user is logged in ');
+-	$userFriends = getFriendsJSON($user->screenName);
+-
+-	$viewerIsAnonymous = false;
+-	if ($embedOwnerName == $user->screenName) {
+-		$owner = $user;
+-		$viewerIsOwner = true;
+-		$ownerFriends = $userFriends;
+-	}
+-}
+-
+-if ($owner == null) {
+-	//if we got here either we are not logged in, or the viewer != owner, so we load the owner
+-	$owner = 'brianm'; //XN_Profile::load($embedOwnerName);
+-	$ownerFriends = getFriendsJSON($embedOwnerName);
+-}
+-
+-error_log('gadgetWrapper: done getting remote data for ' . $url);
+-?>
+-        		//todo load the app data
+-var xnOwner = new opensocial.ShindigPerson('brianm',
+-                                        'Brian McCallister',
+-                                        '',
+-                                        'http://api.ning.com/files/iLsNX-7w48WXQ7TwAtd6*9TmG2Ajf3mdiGnNZp7ZIvQ_/8464126.bin?width=32&height=32',
+-                                        '',
+-                                        new Array(),
+-                                        '');
+-var xnOwnerFriends = '{}'; //<?php  // echo $ownerFriends ?>;
+-var xnViewerFriends = '{}'; //<?php // echo $userFriends ?>;
+-
+-<?php
+-if ($viewerIsAnonymous) {
+-?>
+-var xnViewer = new opensocial.ShindigPerson('xn_anonymous', 'Anonymous', '', '', '', new Array(),'');
+-<?php
+-}
+-else {
+-	if ($viewerIsOwner) {
+-?>
+-var xnViewer = xnOwner;
+-<?php
+-	}
+-	else {
+-?>
+-var xnViewer = new opensocial.ShindigPerson('<%= $user->screenName %>', '<%= $user->fullName %>', '', '<%= $user->thumbnailUrl(32,32); %>', '', new Array(),'');
+-<?php
+-	}
+-}
+-?>
+-
+-
+-function xnGetViewer() {
+-
+-	return xnViewer;
+-}
+-
+-function xnGetOwner() {
+-
+-	return xnOwner;
+-}
+-
+-function xnGetViewerFriends() {
+-
+-	return xnViewerFriends;
+-}
+-
+-function xnGetOwnerFriends() {
+-
+-	return xnOwnerFriends;
+-}
+-
+-opensocial.Container.get().init(hashAppName);
+-
+-</script>
+-<div id="__os_gadget_body">
+-<?php
+-
+-$moduleContent = str_replace('<script src="http://sandbox.orkut.com/js/gen/People.js"></script>', '', $moduleContent);
+-$moduleContent = str_replace('<script type="text/javascript" src="http://sandbox.orkut.com/js/gen/People.js"></script>', '', $moduleContent);
+-//$moduleContent = str_replace('params += "&f=" + person.getId();', 'params += "&f=" + person.obj_.getId();', $moduleContent);
+-$moduleContent = str_replace('http://sandbox.orkut.com/Application.aspx?appId=918178148210',
+-									'/gadgets/index/canvas?user=' . $owner->screenName . '&feedUrl=' . urlencode($gadgetUrl) . ((!$moduleName || $moduleName == '' ? '' : ('&title=' . urlencode($moduleName)))), $moduleContent);
+-
+-//echo 'TEST: <a target="_top" href="' . '/gadgets/index/canvas?user=' . $owner->screenName . '&feedUrl=' . urlencode($gadgetUrl) . ((!$moduleName || $moduleName == '' ? '' : ('&title=' . urlencode($moduleName)))) . '">test canvas link</a><br/>';
+-print $moduleContent ?>
+-
+-<script type="text/javascript">
+-//call the onload handlers
+-	if (onloadHandler != null) {
+-		onloadHandler();
+-	}
+-</script>
+-
+-<?php
+-
+-}
+-?>
+-</div>
+diff -urN php-old/crypto.php php-new/crypto.php
+--- php-old/crypto.php	2008-03-02 16:44:10.000000000 +0100
++++ php-new/crypto.php	1970-01-01 01:00:00.000000000 +0100
+@@ -1,92 +0,0 @@
+-<?php
+-/*
+- * Licensed to the Apache Software Foundation (ASF) under one
+- * or more contributor license agreements.  See the NOTICE file
+- * distributed with this work for additional information
+- * regarding copyright ownership.  The ASF licenses this file
+- * to you under the Apache License, Version 2.0 (the
+- * "License"); you may not use this file except in compliance
+- * with the License.  You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing,
+- * software distributed under the License is distributed on an
+- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+- * KIND, either express or implied.  See the License for the
+- * specific language governing permissions and limitations
+- * under the License.
+- */
+-?><?php
+-
+-require_once 'RSA.class.php';
+-
+-//TODO docs throughout
+-class CryptoHelper {
+-
+-    public static function encrypt($key, $modulo, $data) {
+-        $rsa = new RSA();
+-        return $rsa->encrypt(serialize($data), $key, $modulo);
+-    }
+-
+-    public static function decrypt($key, $modulo, $data) {
+-        $rsa = new RSA();
+-        return unserialize($rsa->decrypt($data, $key, $modulo));
+-    }
+-
+-    // get modulo for key pair, generate key pair if it doesn't exist
+-    public static function appModulo() { //TODO this is a pretty bad name
+-        return self::readKey('modulo');
+-    }
+-
+-    // get private key, generate key pair if it doesn't exist
+-    public static function appPrivateKey() {
+-        return self::readKey('private');
+-    }
+-
+-    // get public key, generate key pair if it doesn't exist
+-    public static function appPublicKey() {
+-        return self::readKey('public');
+-    }
+-
+-    // ------------------------------------------------------------------
+-
+-    // a "poor man's" atomic operation
+-    private static function generateKeys() {
+-        $n = mt_rand();
+-        $rsa = new RSA();
+-        list($modulo, $publicKey, $privateKey) = $rsa->generate_keys('1002074641' /* XXX self::randomPrime() */, '1002073529' /* XXX self::randomPrime() */);
+-        // app creates keys in temp file
+-        if ((! file_put_contents(self::keyPath('modulo-' . $n), $modulo))
+-                || (! file_put_contents(self::keyPath('public-' . $n), $publicKey))
+-                || (! file_put_contents(self::keyPath('private-' . $n), $privateKey))) {
+-            return false;
+-        }
+-        // app moves temp file to xn_private
+-        rename(self::keyPath('modulo-' . $n), self::keyPath('modulo'));
+-        rename(self::keyPath('public-' . $n), self::keyPath('public'));
+-        rename(self::keyPath('private-' . $n), self::keyPath('private'));
+-        sleep(1);
+-    }
+-
+-    private static function readKey($type) {
+-        // app checks for key
+-        if (file_exists(self::keyPath($type))) {
+-            $k = file_get_contents(self::keyPath($type));
+-            if (! $k) {
+-                error_log('Could not read key from ' . self::keyPath($type));
+-            }
+-            return $k;
+-        }
+-        return (CryptoHelper::generateKeys() ? self::readKey($type) : null);
+-    }
+-
+-    private static function randomPrime() {
+-        return '7'; //XXX :)
+-    }
+-
+-    private static function keyPath($type) {
+-        return "./key-$type";
+-    }
+-
+-}
+diff -urN php-old/gadgets/.htaccess php-new/gadgets/.htaccess
+--- php-old/gadgets/.htaccess	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/.htaccess	2008-03-02 16:33:16.000000000 +0100
+@@ -0,0 +1,7 @@
++<IfModule mod_rewrite.c>
++RewriteEngine On
++RewriteBase /
++RewriteCond %{REQUEST_FILENAME} !-f
++RewriteCond %{REQUEST_FILENAME} !-d
++RewriteRule . /gadgets/index.php [L]
++</IfModule>
+diff -urN php-old/gadgets/config.php php-new/gadgets/config.php
+--- php-old/gadgets/config.php	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/config.php	2008-03-02 16:32:45.000000000 +0100
+@@ -0,0 +1,35 @@
++<?
++/*
++ * I really detest such config files to be honest, why put configuration in a web document! 
++ * But since PHP lacks a propper way to set application configurations, and any other method 
++ * would be horribly slow (db, xml, ini files etc), so ... here's our config.php
++ */
++
++// The base prefix under which the gadget url's live, if its the root set this to ''
++// don't forget to update your .htaccess to reflect this, as well as your container 
++// javascript: gadget.setServerBase('/gadgets/');
++define('WEB_PREFIX','/gadgets');
++
++// Configurable classes to use, this way we provide extensibility for what 
++// backends the gadget server uses for its logic functionality. 
++$_blacklist_class = 'BasicGadgetBlacklist';
++$_remote_content = 'BasicRemoteContent';
++$_gadget_signer = 'BasicGadgetSigner';
++$_gadget_token = 'BasicGadgetToken';
++$_data_cache = 'FileCache';
++
++// gadget server specific settings
++define('USERPREF_PARAM_PREFIX', 'up_');
++define('LIBS_PARAM_NAME', 'libs');
++define('DEFAULT_JS_PREFIX', '/js/');
++define('DEFAULT_IFRAME_PREFIX', 'ifr?');
++
++// show debugging output ?
++define('DEBUG', true);
++
++// global cache age policy and location
++define('CACHE_TIME', 24*60*60);
++define('CACHE_ROOT', '/tmp/shindig');
++
++// In some cases we need to know the site root (for features forinstance)
++define('BASE_PATH', realpath(dirname(__FILE__)));
+diff -urN php-old/gadgets/features/README php-new/gadgets/features/README
+--- php-old/gadgets/features/README	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/README	2008-03-02 16:32:45.000000000 +0100
+@@ -0,0 +1,30 @@
++You can automatically include new features into your shindig server by adding them to this directory. Features should exist in a self-contained directory with the following structure:
++
++features
++  |_your-feature-name
++   |_feature.xml
++   |_code-to-run-inside-gadget.js
++   |_code-to-run-inside-container.js
++
++The structure of feature.xml is as follows: TODO: link to xml schema for feature.xml
++<?xml version="1.0"?>
++<feature>
++  <name>your-feature-name (required)</name>
++  <dependency>any dependency you have (optional, may have multiple)</dependency>
++  <gadget> (optional)
++    <script src="code-to-run-inside-gadget.js"/> (optional, may have multiple, may use web resources as well but we strongly encourage bundling your javascript with the xml)
++  </gadget>
++  <container> (optional)
++    <script src="code-to-run-inside-container.js"> (same as for <gadget>)
++  </container>
++</feature>
++
++Please always make sure that all files you provide are encoded as utf8. 
++
++When adding new features, your javascript should conform to shindig javascript coding conventions. This means that you should not be producing new globals and your feature should be compatible with Caja.
++
++When committing a new feature, you should update the features.txt file by running the following script in a unix-like environment:
++
++ls -R1a features/**/*.xml > features/features.txt
++
++TODO: Instructions for regenerating features.txt for other operating system environments.
+diff -urN php-old/gadgets/features/analytics/feature.xml php-new/gadgets/features/analytics/feature.xml
+--- php-old/gadgets/features/analytics/feature.xml	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/analytics/feature.xml	2008-03-02 16:32:43.000000000 +0100
+@@ -0,0 +1,25 @@
++<?xml version="1.0"?>
++<!--
++Licensed to the Apache Software Foundation (ASF) under one
++or more contributor license agreements. See the NOTICE file
++distributed with this work for additional information
++regarding copyright ownership. The ASF licenses this file
++to you under the Apache License, Version 2.0 (the
++"License"); you may not use this file except in compliance
++with the License. You may obtain a copy of the License at
++
++http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing,
++software distributed under the License is distributed on an
++"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++KIND, either express or implied. See the License for the
++specific language governing permissions and limitations under the License.
++-->
++<feature>
++  <name>analytics</name>
++  <gadget>
++    <script src="http://www.google.com/ig/lib/liburchin.js"/>
++    <script src="http://www.google.com/ig/lib/libanalytics.js"/>
++  </gadget>
++</feature>
+diff -urN php-old/gadgets/features/caja/caja.js php-new/gadgets/features/caja/caja.js
+--- php-old/gadgets/features/caja/caja.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/caja/caja.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,1827 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++// This module is the Caja runtime library. It is written in
++// Javascript, not Caja, and would be rejected by the Caja
++// translator. This module exports two globals:
++// * "___" for use by the output of the Caja translator and by some
++//   other untranslated Javascript code.
++// * "caja" providing some common services to the Caja programmer.
++
++// TODO(erights): All code text in comments should be enclosed in
++// &lt;tt&gt;code&lt;/tt&gt;.
++
++
++////////////////////////////////////////////////////////////////////////
++// Caja adds the following common Javascript extensions to ES3
++// TODO(erights): Move such extensions to a separate extensions.js,
++//                and change the conflict rule (for now) to fail on
++//                detecting a conflict.
++////////////////////////////////////////////////////////////////////////
++
++if (Array.prototype.indexOf === undefined) {
++  /**
++   * Returns the first index at which the specimen is found (by
++   * "===") or -1 if none.
++   */
++  Array.prototype.indexOf = function(specimen) {
++    var len = this.length;
++    for (var i = 0; i < len; i += 1) {
++      if (this[i] === specimen) {
++        return i;
++      }
++    }
++    return -1;
++  };
++}
++
++if (Array.prototype.lastIndexOf === undefined) {
++  /**
++   * Returns the last index at which the specimen is found (by
++   * "===") or -1 if none.
++   */
++  Array.prototype.lastIndexOf = function(specimen) {
++    for (var i = this.length; --i >= 0; ) {
++      if (this[i] === specimen) {
++        return i;
++      }
++    }
++    return -1;
++  };
++}
++
++if (Date.prototype.toISOString === undefined) {
++  /**
++   * Like the date.toJSONString() method defined in json.js, but
++   * without the surrounding quotes.
++   */
++  Date.prototype.toISOString = function() {
++    function f(n) {
++      return n < 10 ? '0' + n : n;
++    }
++    return (this.getUTCFullYear()     + '-' +
++            f(this.getUTCMonth() + 1) + '-' +
++            f(this.getUTCDate())      + 'T' +
++            f(this.getUTCHours())     + ':' +
++            f(this.getUTCMinutes())   + ':' +
++            f(this.getUTCSeconds())   + 'Z');
++  };
++}
++
++
++// caja.js exports the following names to the Javascript global
++// namespace. Caja code can only use the "caja" object. The "___"
++// object is for use by code generated by the Caja translator, and by
++// Javascript code (such as a powerbox) in the embedding application.
++
++// Caja virtually adds Object.prototype.freeze_(), so that a
++// constructed object can freeze itself, but its clients cannot freeze
++// it. However, in order not to disrupt innocent code (see
++// canInnocentEnum() below), the only property names Caja may add to
++// primordial objects are names ending in triple underbar. Therefore,
++// Caja instead adds Object.prototype.freeze__handler___().
++
++var caja;
++var ___;
++
++// Explicitly passing in the actual global object to avoid
++// ReferenceErrors when referring to potentially nonexistent objects
++// like HTMLDivElement.
++
++(function(global) {
++
++  ////////////////////////////////////////////////////////////////////////
++  // Diagnostics and condition enforcement
++  ////////////////////////////////////////////////////////////////////////
++
++  /**
++   * The initial default logging function does nothing.
++   * <p>
++   * Note: JavaScript has no macros, so even in the "does nothing"
++   * case, remember that the arguments are still evaluated.
++   */
++  var myLogFunc_ = function(str, opt_stop) {};
++
++  /**
++   * Gets the currently registered logging function.
++   */
++  function getLogFunc() { return myLogFunc_; }
++
++  /**
++   * Register newLogFunc as the current logging function, to be called
++   * by <tt>___.log(str)</tt> and <tt>___.fail(...)</tt>.
++   * <p>
++   * A logging function is assumed to have the signature
++   * <tt>(str, opt_stop)</tt>, where<ul>
++   * <li><tt>str</tt> is the diagnostic string to be logged, and
++   * <li><tt>opt_stop</tt>, if present and <tt>true</tt>, indicates
++   *     that normal flow control is about to be terminated by a
++   *     throw. This provides the logging function the opportunity to
++   *     terminate normal control flow in its own way, such as by
++   *     invoking an undefined method, in order to trigger a Firebug
++   *     stacktrace.
++   * </ul>
++   */
++  function setLogFunc(newLogFunc) { myLogFunc_ = newLogFunc; }
++
++  /**
++   * Calls the currently registered logging function.
++   */
++  function log(str) { myLogFunc_(String(str)); }
++
++
++  /**
++   * Throw, and optionally log, an error whose message is the
++   * concatentation of the arguments.
++   * <p>
++   * The arguments are converted to strings (presumably by an
++   * implicit call to ".toString()") and appended together to make
++   * the message of the Error that's thrown.
++   */
++  function fail(var_args) {
++    var message = Array.prototype.slice.call(arguments, 0).join('');
++    myLogFunc_(message, true);
++    throw new Error(message);
++  }
++
++  /**
++   * Like an assert that can't be turned off.
++   * <p>
++   * Either returns true (on success) or throws (on failure). The
++   * arguments starting with <tt>var_args</tt> are converted to
++   * strings and appended together to make the message of the Error
++   * that's thrown.
++   * <p>
++   * TODO(erights) We may deprecate this in favor of <pre>
++   *     test || fail(var_args...)
++   * </pre> or <pre>
++   *     if (!test) { fail(var_args...); }
++   * </pre>
++   */
++  function enforce(test, var_args) {
++    return test || fail.apply({},
++                              Array.prototype.slice.call(arguments, 1));
++  }
++
++  /**
++   * Enforces <tt>typeof specimen === typename</tt>, in which case
++   * specimen is returned.
++   * <p>
++   * If not, throws an informative TypeError
++   * <p>
++   * opt_name, if provided, should be a name or description of the
++   * specimen used only to generate friendlier error messages.
++   */
++  function enforceType(specimen, typename, opt_name) {
++    if (typeof specimen !== typename) {
++      fail('expected ', typename, ' instead of ', typeof specimen,
++           ': ', (opt_name || specimen));
++    }
++    return specimen;
++  }
++
++  /**
++   * Enforces that specimen is a non-negative integer within the range
++   * of exactly representable consecutive integers, in which case
++   * specimen is returned.
++   * <p>
++   * "Nat" is short for "Natural number".
++   */
++  function enforceNat(specimen) {
++    enforceType(specimen, 'number');
++    if (Math.floor(specimen) !== specimen) {
++      fail('Must be integral: ', specimen);
++    }
++    if (specimen < 0) {
++      fail('Must not be negative: ', specimen);
++    }
++    // Could pre-compute precision limit, but probably not faster
++    // enough to be worth it.
++    if (Math.floor(specimen-1) !== specimen-1) {
++      fail('Beyond precision limit: ', specimen);
++    }
++    if (Math.floor(specimen-1) >= specimen) {
++      fail('Must not be infinite: ', specimen);
++    }
++    return specimen;
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Privileged fault handlers
++  ////////////////////////////////////////////////////////////////////////
++
++  /**
++   *
++   */
++  var myKeeper_ = {
++
++    /**
++     *
++     */
++    toString: function() { return '<Logging Keeper>'; },
++
++    /**
++     *
++     */
++    handleRead: function(obj, name) {
++      log('Not readable: (' + obj + ').' + name);
++      return undefined;
++    },
++
++    /**
++     *
++     */
++    handleCall: function(obj, name, args) {
++      fail('Not callable: (', obj, ').', name);
++    },
++
++    /**
++     *
++     */
++    handleSet: function(obj, name, val) {
++      fail('Not settable: (', obj, ').', name);
++    },
++
++    /**
++     *
++     */
++    handleDelete: function(obj, name) {
++      fail('Not deletable: (', obj, ').', name);
++    }
++  };
++
++  /**
++   *
++   */
++  function getKeeper() { return myKeeper_; }
++
++  /**
++   *
++   */
++  function setKeeper(newKeeper) { myKeeper_ = newKeeper; }
++
++  /**
++   *
++   */
++  Object.prototype.handleRead___ = function(name) {
++    var handlerName = name + '_getter___';
++    if (this[handlerName]) {
++      return this[handlerName]();
++    }
++    return myKeeper_.handleRead(this, name);
++  };
++
++  /**
++   *
++   */
++  Object.prototype.handleCall___ = function(name, args) {
++    var handlerName = name + '_handler___';
++    if (this[handlerName]) {
++      return this[handlerName].call(this, args);
++    }
++    return myKeeper_.handleCall(this, name, args);
++  };
++
++  /**
++   *
++   */
++  Object.prototype.handleSet___ = function(name, val) {
++    var handlerName = name + '_setter___';
++    if (this[handlerName]) {
++      return this[handlerName](val);
++    }
++    return myKeeper_.handleSet(this, name, val);
++  };
++
++  /**
++   *
++   */
++  Object.prototype.handleDelete___ = function(name) {
++    var handlerName = name + '_deleter___';
++    if (this[handlerName]) {
++      return this[handlerName]();
++    }
++    return myKeeper_.handleDelete(this, name);
++  };
++
++  ////////////////////////////////////////////////////////////////////////
++  // Overriding some very basic primordial methods
++  ////////////////////////////////////////////////////////////////////////
++
++  /**
++   * Returns true only if we can call
++   * Object.prototype.hasOwnProperty on this object without
++   * exploding.
++   * <p>
++   * On Firefox, it seems that calling hasOwnProperty on an
++   * HTMLDivElement sometimes causes an
++   * "Illegal operation on WrappedNative prototype object".
++   * <p>
++   * SECURITY BUG STOPGAP TODO(erights)
++   */
++  var canCallHasOwnProperty = function(obj) { return true; };
++
++  // When we're in a non-browser environment, such that there isn't
++  // a global HTMLDivElement, then we don't need to worry about
++  // this bug.
++  if (typeof global.HTMLDivElement === 'function') {
++    canCallHasOwnProperty = function(obj) {
++      return !(obj instanceof global.HTMLDivElement);
++    };
++  }
++
++  var originalHOP_ = Object.prototype.hasOwnProperty;
++
++  /**
++   * <tt>hasOwnProp(obj.prop)</tt> means what
++   * <tt>obj.hasOwnProperty(prop)</tt> would normally mean in an
++   * unmodified Javascript system.
++   */
++  function hasOwnProp(obj, name) {
++    var t = typeof obj;
++    if (t !== 'object' && t !== 'function') {
++      return false;
++    }
++    if (canCallHasOwnProperty(obj)) {
++      // Fails in Firefox for some DOM objects intermittently(?!)
++      // with "Illegal operation on WrappedNative prototype object".
++      // For these, canCallHasOwnProperty must say false.
++      return originalHOP_.call(obj, name);
++    } else {
++      return false;
++    }
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // walking prototype chain, checking JSON containers
++  ////////////////////////////////////////////////////////////////////////
++
++  /**
++   * Does str end with suffix?
++   */
++  function endsWith(str, suffix) {
++    enforceType(str, 'string');
++    enforceType(suffix, 'string');
++    var strLen = str.length;
++    var sufLen = suffix.length;
++    return strLen >= sufLen &&
++      (str.substring(strLen-sufLen, strLen) === suffix);
++  }
++
++  /**
++   * Returns the 'constructor' property of obj's prototype.
++   * <p>
++   * By "obj's prototype", we mean the object that obj directly
++   * inherits from, not the value of its 'prototype' property. If
++   * obj has a '__proto__' property, then we assume we're on a
++   * platform (like Firefox) in which this reliably gives us obj's
++   * prototype. Otherwise, we memoize the apparent prototype into
++   * '__proto__' to speed up future queries.
++   * <p>
++   * If obj is a function or not an object, return undefined.
++   */
++  function directConstructor(obj) {
++    if (obj === null) { return undefined; }
++    if (typeof obj !== 'object') {
++      // Note that functions thereby return undefined,
++      // so directConstructor() doesn't provide access to the
++      // forbidden Function constructor.
++      return undefined;
++    }
++    // The following test will initially return false in IE
++    if (hasOwnProp(obj, '__proto__')) {
++      if (obj.__proto__ === null) { return undefined; }
++      return obj.__proto__.constructor;
++    }
++    var result;
++    if (!hasOwnProp(obj, 'constructor')) {
++      result = obj.constructor;
++    } else {
++      var oldConstr = obj.constructor;
++      if (!(delete obj.constructor)) { return undefined; }
++      result = obj.constructor;
++      obj.constructor = oldConstr;
++    }
++    if (result.prototype.constructor === result) {
++      // Memoize, so it'll be faster next time.
++      obj.__proto__ = result.prototype;
++    }
++    return result;
++  }
++
++  /**
++   * A JSON container is an object whose direct constructor is
++   * Object or Array.
++   * <p>
++   * These are the kinds of non-primitive objects that can be
++   * expressed in the JSON language.
++   */
++  function isJSONContainer(obj) {
++    var constr = directConstructor(obj);
++    return constr === Object || constr === Array;
++  }
++
++  /**
++   * If obj is frozen, Caja code cannot directly assign to
++   * properties of obj, nor directly add or delete properties to
++   * obj.
++   * <p>
++   * The status of being frozen is not inherited. If A inherits from
++   * B (i.e., if A's prototype is B), then (we hope) B must be
++   * frozen regardless, but A may or may not be frozen.
++   * <p>
++   * If typeof <tt>obj</tt> is neither 'object' nor 'function', then
++   * it's currently considered frozen.
++   */
++  function isFrozen(obj) {
++    var t = typeof obj;
++    if (t !== 'object' && t !== 'function') {
++      return true;
++    }
++    return hasOwnProp(obj, '___FROZEN___');
++  }
++
++  /**
++   * Mark obj as frozen so that Caja code cannot directly assign to its
++   * properties.
++   * <p>
++   * If obj is a function, also freeze obj.prototype.
++   * <p>
++   * This appears as <tt>___.primFreeze(obj)</tt> and is wrapped by
++   * the virtual <tt>Object.prototype.freeze_()</tt>.
++   */
++  function primFreeze(obj) {
++    if (null === obj) { return obj; }
++    if (isFrozen(obj)) { return obj; }
++    var typ = typeof obj;
++    if (typ !== 'object' && typ !== 'function') { return obj; }
++
++    // badFlags are names of properties we need to turn off.
++    // We accumulate these first, so that we're not in the midst of a
++    // for/in loop on obj while we're deleting properties from obj.
++    var badFlags = [];
++    for (var k in obj) {
++      if (endsWith(k, '_canSet___') || endsWith(k, '_canDelete___')) {
++        if (obj[k]) {
++          badFlags.push(k);
++        }
++      }
++    }
++    for (var i = 0; i < badFlags.length; i++) {
++      var flag = badFlags[i];
++      if (hasOwnProp(obj, flag)) {
++        if (!(delete obj[flag])) {
++          fail('internal: failed delete: ', obj, '.', flag);
++        }
++      }
++      if (obj[flag]) {
++        // At the time of this writing, this case
++        // should never be able to happen, since
++        // prototypes are always frozen before use,
++        // and frozen objects cannot have these flags
++        // set on them. We code it this way to allow
++        // for a future optimization, where the
++        // prototype can record as canSet those
++        // properties that appear in instances that
++        // inherit from this prototype.
++        obj[flag] = false;
++      }
++    }
++    obj.___FROZEN___ = true;
++    if (typ === 'function') {
++      // Do last to avoid possible infinite recursion.
++      primFreeze(obj.prototype);
++    }
++    return obj;
++  }
++
++  /**
++   * Like primFreeze(obj), but applicable only to JSON containers.
++   */
++  function freeze(obj) {
++    if (!isJSONContainer(obj)) {
++      fail('caja.freeze(obj) applies only to JSON Containers: ', obj);
++    }
++    return primFreeze(obj);
++  }
++
++  /**
++   * Makes a mutable copy of a JSON container.
++   * <p>
++   * Even if the original is frozen, the copy will still be mutable.
++   */
++  function copy(obj) {
++    if (!isJSONContainer(obj)) {
++      fail('caja.copy(obj) applies only to JSON Containers: ', obj);
++    }
++    var result = (obj instanceof Array) ? [] : {};
++    each(obj, simpleFunc(function(k, v) {
++      result[k] = v;
++    }));
++    return result;
++  }
++
++  /**
++   * A snapshot of a JSON container is a frozen copy of that
++   * container.
++   */
++  function snapshot(obj) {
++    return primFreeze(copy(obj));
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Accessing property attributes
++  ////////////////////////////////////////////////////////////////////////
++
++  /** Tests whether the fast-path canRead flag is set. */
++  function canRead(obj, name)   { return !!obj[name + '_canRead___']; }
++  /** Tests whether the fast-path canEnum flag is set. */
++  function canEnum(obj, name)   { return !!obj[name + '_canEnum___']; }
++  /** Tests whether the fast-path canCall flag is set. */
++  function canCall(obj, name)   { return !!obj[name + '_canCall___']; }
++  /** Tests whether the fast-path canSet flag is set. */
++  function canSet(obj, name)    { return !!obj[name + '_canSet___']; }
++  /** Tests whether the fast-path canDelete flag is set. */
++  function canDelete(obj, name) { return !!obj[name + '_canDelete___']; }
++
++  /**
++   * Sets the fast-path canRead flag.
++   * <p>
++   * The various <tt>allow*</tt> functions are called externally by
++   * Javascript code to express whitelisting taming decisions. And
++   * they are called internally to memoize decisions arrived at by
++   * other means.
++   */
++  function allowRead(obj, name) {
++    obj[name + '_canRead___'] = true;
++  }
++
++  /** allowEnum implies allowRead */
++  function allowEnum(obj, name) {
++    allowRead(obj, name);
++    obj[name + '_canEnum___'] = true;
++  }
++
++  /**
++   * Simple functions should callable and readable, but methods
++   * should only be callable.
++   */
++  function allowCall(obj, name) {
++    obj[name + '_canCall___'] = true;
++  }
++
++  /**
++   * allowSet implies allowEnum and allowRead.
++   */
++  function allowSet(obj, name) {
++    if (isFrozen(obj)) {
++      fail("Can't set .", name, ' on frozen (', obj, ')');
++    }
++    allowEnum(obj, name);
++    obj[name + '_canSet___'] = true;
++  }
++
++  /**
++   * BUG TODO(erights): allowDelete is not yet specified or
++   * implemented.
++   */
++  function allowDelete(obj, name) {
++    if (isFrozen(obj)) {
++      fail("Can't delete .", name, ' on frozen (', obj, ')');
++    }
++    fail('TODO(erights): allowDelete() not yet implemented');
++    obj[name + '_canDelete___'] = true;
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Classifying functions
++  ////////////////////////////////////////////////////////////////////////
++
++  function isCtor(constr)    { return !!constr.___CONSTRUCTOR___; }
++  function isMethod(meth)    { return '___METHOD_OF___' in meth; }
++  function isSimpleFunc(fun) { return !!fun.___SIMPLE_FUNC___; }
++
++  /**
++   * Mark constr as a constructor.
++   * <p>
++   * If opt_Sup is provided, set constr.Super = opt_Sup.
++   * <p>
++   * A function is tamed and classified by calling one of ctor(),
++   * method(), or simpleFunc(). Each of these checks that the
++   * function hasn't already been classified by any of the others. A
++   * function which has not been so classified is an <i>untamed
++   * function</i>.
++   * <p>
++   * opt_name, if provided, should be the name of the constructor
++   * function. Currently, this is used only to generate friendlier
++   * error messages.
++   */
++  function ctor(constr, opt_Sup, opt_name) {
++    enforceType(constr, 'function', opt_name);
++    if (isMethod(constr)) {
++      fail("Methods can't be constructors: ", constr);
++    }
++    if (isSimpleFunc(constr)) {
++      fail("Simple functions can't be constructors: ", constr);
++    }
++    constr.___CONSTRUCTOR___ = true;
++    if (opt_Sup) {
++      opt_Sup = asCtor(opt_Sup);
++      if (hasOwnProp(constr, 'Super')) {
++        if (constr.Super !== opt_Sup) {
++          fail("Can't inherit twice: ", constr, ',', opt_Sup);
++        }
++      } else {
++        if (isFrozen(constr)) {
++          fail('Derived constructor already frozen: ', constr);
++        }
++        constr.Super = opt_Sup;
++      }
++    }
++    return constr;  // translator freezes constructor later
++  }
++
++  /**
++   * Mark meth as a method of instances of constr.
++   * <p>
++   * opt_name, if provided, should be the message name associated
++   * with the method. Currently, this is used only to generate
++   * friendlier error messages.
++   */
++  function method(constr, meth, opt_name) {
++    enforceType(meth, 'function', opt_name);
++    if (isCtor(meth)) {
++      fail("constructors can't be methods: ", meth);
++    }
++    if (isSimpleFunc(meth)) {
++      fail("Simple functions can't be methods: ", meth);
++    }
++    meth.___METHOD_OF___ = asCtorOnly(constr);
++    return primFreeze(meth);
++  }
++
++  /**
++   * Mark fun as a simple function.
++   * <p>
++   * opt_name, if provided, should be the name of the
++   * function. Currently, this is used only to generate friendlier
++   * error messages.
++   */
++  function simpleFunc(fun, opt_name) {
++    enforceType(fun, 'function', opt_name);
++    if (isCtor(fun)) {
++      fail("Constructors can't be simple functions: ", fun);
++    }
++    if (isMethod(fun)) {
++      fail("Methods can't be simple function: ", fun);
++    }
++    fun.___SIMPLE_FUNC___ = true;
++    fun.apply_canCall___ = true;
++    fun.call_canCall___ = true;
++    return fun;  // translator freezes fun later
++  }
++
++  /** This "Only" form doesn't freeze */
++  function asCtorOnly(constr) {
++    if (isCtor(constr) || isSimpleFunc(constr)) {
++      return constr;
++    }
++
++    enforceType(constr, 'function');
++    if (isMethod(constr)) {
++      fail("Methods can't be called as constructors: ", constr);
++    }
++    fail("Untamed functions can't be called as constructors: ", constr);
++  }
++
++  /** Only constructors and simple functions can be called as constructors */
++  function asCtor(constr) {
++    return primFreeze(asCtorOnly(constr));
++  }
++
++  /** Only methods and simple functions can be called as methods */
++  function asMethod(meth) {
++    if (isSimpleFunc(meth) || isMethod(meth)) {
++      if (!isFrozen(meth)) {
++        fail('internal: non-frozen func stored as method: ', meth);
++      }
++      return meth;
++    }
++
++    enforceType(meth, 'function');
++    if (isCtor(meth)) {
++      fail("Constructors can't be called as methods: ", meth);
++    }
++    fail("Untamed functions can't be called as methods: ", meth);
++  }
++
++  /** Only simple functions can be called as simple functions */
++  function asSimpleFunc(fun) {
++    if (isSimpleFunc(fun)) {
++      return primFreeze(fun);
++    }
++
++    enforceType(fun, 'function');
++    if (isCtor(fun)) {
++      if (fun === Number || fun === String || fun === Boolean) {
++        // TODO(erights): To avoid accidents, <tt>method</tt>,
++        // <tt>simpleFunc</tt>, and <tt>ctor</tt> each ensure that
++        // these classifications are exclusive. A function can be
++        // classified as in at most one of these categories. However,
++        // some primordial type conversion functions like
++        // <tt>String</tt> need to be invocable both ways, so we
++        // should probably relax this constraint.
++        // <p>
++        // But before we do, we should reexamine other
++        // implications. For example, simple-functions, when called
++        // reflectively by <tt>call</tt> or <tt>apply</tt> (and
++        // therefore <tt>bind</tt>), ignore their first argument,
++        // whereas constructors can be called reflectively by
++        // <tt>call</tt> to do super-initialization on behalf of a
++        // derived constructor.
++        // <p>
++        // Curiously, ES3 also defines function behavior different
++        // from constructor behavior for <tt>Object</tt>,
++        // <tt>Date</tt>, <tt>RegExp</tt>, and <tt>Error</tt>. (Not
++        // sure about <tt>Array</tt>.) We should understand these as
++        // well before introducing a proper solution.
++        return fun;
++      }
++      fail("Constructors can't be called as simple functions: ", fun);
++    }
++    if (isMethod(fun)) {
++      fail("Methods can't be called as simple functions: ", fun);
++    }
++    fail("Untamed functions can't be called as simple functions: ", fun);
++  }
++
++  /**
++   * Sets constr.prototype[name] = member.
++   * <p>
++   * If member is a method of constr, make it callable.
++   * If member is a simple function, make it callable and readable.
++   * Else make it readable.
++   */
++  function setMember(constr, name, member) {
++    name = String(name);
++    if (endsWith(name, '__')) {
++      fail('Reserved name: ', name);
++    }
++    var proto = readPub(asCtorOnly(constr), 'prototype');
++    // We allow prototype members to end in a single "_".
++    if (!canSetProp(proto, name)) {
++      fail('not settable: ', name);
++    }
++    if (member.___METHOD_OF___ === constr) {
++      allowCall(proto, name);  // grant
++    } else if (isSimpleFunc(member)) {
++      allowCall(proto, name);  // grant
++      allowSet(proto, name);  // grant
++    } else {
++      allowSet(proto, name);  // grant
++    }
++    proto[name] = member;
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Accessing properties
++  ////////////////////////////////////////////////////////////////////////
++
++  /**
++   * Can a constructed Caja object read this property on itself?
++   * <p>
++   * Can a Caja method whose <tt>this</tt> is bound to <tt>that</tt>
++   * read its own <tt>name</tt> property? For properties added to
++   * the object by Caja code, the answer is yes. For other
++   * properties, which must therefore be inherited from a prototype
++   * written in Javascript rather than Caja, the answer is: iff they
++   * were whitelisted.
++   */
++  function canReadProp(that, name) {
++    name = String(name);
++    if (endsWith(name, '__')) { return false; }
++    return canRead(that, name);
++  }
++
++  /**
++   * A constructed Caja object's attempt to read this property on
++   * itself.
++   * <p>
++   * If it can't,  it reads <tt>undefined</tt> instead.
++   */
++  function readProp(that, name) {
++    name = String(name);
++    return canReadProp(that, name) ? that[name] : that.handleRead___(name);
++  }
++
++  /**
++   * Can a Caja client of <tt>obj</tt> read its <name> property?
++   * <p>
++   * If the property is Internal (i.e. ends in an '_'), then no.
++   * If the property was defined by Caja code, then yes. If it was
++   * whitelisted, then yes. Or if the property is an own property of
++   * a JSON container, then yes.
++   */
++  function canReadPub(obj, name) {
++    name = String(name);
++    if (endsWith(name, '_')) { return false; }
++    if (canRead(obj, name)) { return true; }
++    if (!isJSONContainer(obj)) { return false; }
++    if (!hasOwnProp(obj, name)) { return false; }
++    allowRead(obj, name);  // memoize
++    return true;
++  }
++
++  /**
++   * Caja code attempting to read a property on something besides
++   * <tt>this</tt>.
++   * <p>
++   * If it can't, it reads <tt>undefined</tt> instead.
++   */
++  function readPub(obj, name) {
++    name = String(name);
++    return canReadPub(obj, name) ? obj[name] : obj.handleRead___(name);
++  }
++
++  /**
++   * Can "innocent" code enumerate the named property on this object?
++   * <p>
++   * "Innocent" code is code which we assume to be ignorant of Caja,
++   * not to be actively hostile, but which may be buggy (and
++   * therefore accidentally harmful or exploitable). This
++   * corresponds to legacy code, such as libraries, that we decide
++   * to run untranslated, perhaps hidden or tamed, but which needs
++   * to co-exist smoothly with the Caja runtime.
++   * <p>
++   * An earlier version of canInnocentEnum() filtered out exactly those
++   * names ending with a double underbar. It now filters out exactly
++   * those names ending in a triple underbar. Caja code can't see names
++   * ending in a double underbar, since existing platforms (like
++   * Firefox) use such names for purposes that should be hidden from
++   * Caja code. However, it is not up to Caja to shield innocent code
++   * from seeing such platform properties. All the magic names Caja
++   * adds for its own internal bookkeeping end in triple underbar, so
++   * that is all we need to hide from innocent code.
++   */
++  function canInnocentEnum(obj, name) {
++    name = String(name);
++    if (endsWith(name, '___')) { return false; }
++    return true;
++  }
++
++  /**
++   * Would a Caja for/in loop on <tt>this</tt> see this name?
++   * <p>
++   * For properties defined in Caja, this is generally the same as
++   * canReadProp. Otherwise according to whitelisting.
++   */
++  function canEnumProp(that, name) {
++    name = String(name);
++    if (endsWith(name, '__')) { return false; }
++    return canEnum(that, name);
++  }
++
++  /**
++   * Would a Caja for/in loop by a client of obj see this name?
++   * <p>
++   * For properties defined in Caja, this is generally the same as
++   * canReadProp. Otherwise according to whitelisting.
++   */
++  function canEnumPub(obj, name) {
++    name = String(name);
++    if (endsWith(name, '_')) { return false; }
++    if (canEnum(obj, name)) { return true; }
++    if (!isJSONContainer(obj)) { return false; }
++    if (!hasOwnProp(obj, name)) { return false; }
++    allowEnum(obj, name);  // memoize
++    return true;
++  }
++
++  /**
++   * Like canEnumPub, but allows only non-inherited properties.
++   */
++  function canEnumOwn(obj, name) {
++    name = String(name);
++    return hasOwnProp(obj, name) && canEnumPub(obj, name);
++  }
++
++  /**
++   * Inside a <tt>caja.each()</tt>, the body function can terminate
++   * early, as if with a conventional <tt>break;</tt>, by doing a
++   * <pre>return caja.BREAK;</pre>
++   */
++  var BREAK = {};
++
++  /**
++   * For each sensible key/value pair in obj, call fn with that
++   * pair.
++   * <p>
++   * If <tt>obj instanceof Array</tt>, then enumerate
++   * indexes. Otherwise, enumerate the canEnumOwn() property names.
++   */
++  function each(obj, fn) {
++    fn = asSimpleFunc(fn);
++    if (obj instanceof Array) {
++      var len = obj.length;
++      for (var i = 0; i < len; i++) {
++        if (fn(i, readPub(obj, i)) === BREAK) {
++          return;
++        }
++      }
++    } else {
++      for (var k in obj) {
++        if (canEnumOwn(obj, k)) {
++          if (fn(k, readPub(obj, k)) === BREAK) {
++            return;
++          }
++        }
++      }
++    }
++  }
++
++  /**
++   * Can this be called as an internal method?
++   * <p>
++   * For genuine methods, they are only callable if the canCall
++   * attribute is set. Otherwise, if this property is readable and
++   * holds a simple function, then it's also callable as a function,
++   * which we can memoize.
++   * <p>
++   * SECURITY HAZARD TODO(erights): If a settable property is
++   * first set to a
++   * simple function, which is then called, memoizing canCall, and
++   * then set to some other kind of function which leaked (such as
++   * an untamed function), then that other function can be
++   * inappropriately called as a method on that. We currently
++   * classify this as a hazard and not a bug per se, since no such
++   * function value should ever leak into value space. If one does,
++   * there's a bug either in Caja or in the embedding app's taming
++   * decisions.
++   * <p>
++   * In any case, the not-yet-implemented plan to fix this hazard is
++   * to have two canSet flags: one that records the grant of
++   * settability, and one to be tested in the fast-path. The
++   * fast-path canCall and fast-path canSet flags will be exclusive,
++   * to be faulted in by the last successful use. This way, repeated
++   * calls are fast, and repeated sets are fast, but the first call
++   * after a set will re-check the value to be called.
++   * <p>
++   * This plan will need to be thought through again when we
++   * implement property deletion.
++   */
++  function canCallProp(that, name) {
++    name = String(name);
++    if (endsWith(name, '__')) { return false; }
++    if (canCall(that, name)) { return true; }
++    if (!canReadProp(that, name)) { return false; }
++    var func = that[name];
++    if (!isSimpleFunc(func)) { return false; }
++    allowCall(that, name);  // memoize
++    return true;
++  }
++
++  /**
++   * A Caja method tries to call one of its Internal methods.
++   */
++  function callProp(that, name, args) {
++    name = String(name);
++    if (canCallProp(that, name)) {
++      var meth = that[name];
++      return meth.apply(that, args);
++    } else {
++      return that.handleCall___(name, args);
++    }
++  }
++
++  /**
++   * Like canCallProp(), with differences that parallel the
++   * differences between canReadProp vs canReadPub.
++   */
++  function canCallPub(obj, name) {
++    name = String(name);
++    if (endsWith(name, '_')) { return false; }
++    if (canCall(obj, name)) { return true; }
++    if (!canReadPub(obj, name)) { return false; }
++    var func = obj[name];
++    if (!isSimpleFunc(func)) { return false; }
++    allowCall(obj, name);  // memoize
++    return true;
++  }
++
++  /**
++   * A client of obj tries to call one of its methods.
++   */
++  function callPub(obj, name, args) {
++    name = String(name);
++    if (canCallPub(obj, name)) {
++      var meth = obj[name];
++      return meth.apply(obj, args);
++    } else {
++      return obj.handleCall___(name, args);
++    }
++  }
++
++  /**
++   * Can a method of a Caja constructed object directly assign to
++   * this property of its object?
++   * <p>
++   * Iff this object isn't frozen.
++   */
++  function canSetProp(that, name) {
++    name = String(name);
++    if (endsWith(name, '__')) { return false; }
++    if (canSet(that, name)) { return true; }
++    return !isFrozen(that);
++  }
++
++  /**
++   * A Caja method tries to assign to this property of its object.
++   */
++  function setProp(that, name, val) {
++    name = String(name);
++    if (canSetProp(that, name)) {
++      allowSet(that, name);  // grant
++      that[name] = val;
++      return val;
++    } else {
++      return that.handleSet___(name, val);
++    }
++  }
++
++  /**
++   * Can a client of obj directly assign to its name property?
++   * <p>
++   * If this property is Internal (i.e., ends with a '_') or if this
++   * object is frozen, then no.
++   * If this property is not Internal and was defined by Caja code,
++   * then yes. If the object is a JSON container, then
++   * yes. Otherwise according to whitelisting decisions.
++   * <p>
++   * The non-obvious implication of this rule together with the
++   * canSetProp rule is that a Caja client of a Caja constructed
++   * object cannot add new properties to it. But a Caja constructed
++   * object can add new properties to itself, and its clients can
++   * then assign to these properties.
++   */
++  function canSetPub(obj, name) {
++    name = String(name);
++    if (endsWith(name, '_')) { return false; }
++    if (canSet(obj, name)) { return true; }
++    return !isFrozen(obj) && isJSONContainer(obj);
++  }
++
++  /** A client of obj attempts to assign to one of its properties. */
++  function setPub(obj, name, val) {
++    name = String(name);
++    if (canSetPub(obj, name)) {
++      allowSet(obj, name);  // grant
++      obj[name] = val;
++      return val;
++    } else {
++      return obj.handleSet___(name, val);
++    }
++  }
++
++  /**
++   * Can a Caja constructed object delete the named property?
++   * <p>
++   * BUG TODO(erights): This is not yet supported. The precise
++   * enabling conditions are not yet determined, as is the implied
++   * bookkeeping.
++   */
++  function canDeleteProp(that, name) {
++    fail('TODO(erights): deletion not yet supported');
++    return false;
++  }
++
++  /**
++   * A Caja constructed object attempts to delete one of its own
++   * properties.
++   * <p>
++   * BUG TODO(erights): This is not yet supported. The precise
++   * enabling conditions are not yet determined, as is the implied
++   * bookkeeping.
++   */
++  function deleteProp(that, name) {
++    name = String(name);
++    if (canDeleteProp(that, name)) {
++      fail('TODO(erights): deletion not yet supported');
++      return (delete that[name]) ||
++        fail('not deleted: ', name);
++    } else {
++      return that.handleDelete___(name);
++    }
++  }
++
++  /**
++   * Can a client of obj delete the named property?
++   * <p>
++   * BUG TODO(erights): This is not yet supported. The precise
++   * enabling conditions are not yet determined, as is the implied
++   * bookkeeping.
++   */
++  function canDeletePub(obj, name) {
++    fail('TODO(erights): deletion not yet supported');
++    return false;
++  }
++
++  /**
++   * A client of obj can only delete a property of obj if obj is a
++   * non-frozen JSON container.
++   * <p>
++   * BUG TODO(erights): This is not yet supported. The precise
++   * enabling conditions are not yet determined, as is the implied
++   * bookkeeping.
++   */
++  function deletePub(obj, name) {
++    name = String(name);
++    if (canDeletePub(obj, name)) {
++      if (!isJSONContainer(obj)) {
++        fail('unable to delete: ', name);
++      }
++      fail('TODO(erights): deletion not yet supported');
++      return (delete obj[name]) ||
++        fail('not deleted: ', name);
++    } else {
++      return obj.handleDelete___(name);
++    }
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Other
++  ////////////////////////////////////////////////////////////////////////
++
++  /**
++   * This returns a frozen array copy of the original array or
++   * array-like object.
++   * <p>
++   * If a Caja program makes use of <tt>arguments</tt> in any
++   * position other than <tt>arguments.callee</tt>, this is
++   * rewritten to use a frozen array copy of arguments instead. This
++   * way, if Caja code passes its arguments to someone else, they
++   * are not giving the receiver the rights to access the passing
++   * function nor to modify the parameter variables of the passing
++   * function.
++   */
++  function args(original) {
++    return primFreeze(Array.prototype.slice.call(original, 0));
++  }
++
++  /**
++   *
++   */
++  function setMemberMap(sub, members) {
++    each(members, simpleFunc(function(mname, member) {
++      setMember(sub, mname, member);
++    }));
++  }
++
++  /**
++   * Provides a shorthand for a class-like declaration of a fresh
++   * Caja constructor.
++   * <p>
++   * Given that sub is a Caja constructor in formation, whose 'prototype'
++   * property hasn't been initialized yet, initialize sub and its
++   * 'prototype' property so that it acts as a subclass of opt_Sup,
++   * with opt_members added as members to sub.prototype, and
++   * opt_statics added as members to sub.
++   * <p>
++   * TODO(erights): return a builder object that allows further
++   * initialization.
++   */
++  function def(sub, opt_Sup, opt_members, opt_statics) {
++    var sup = opt_Sup || Object;
++    var members = opt_members || {};
++    var statics = opt_statics || {};
++    if ('Super' in statics) {
++      fail('The static name "Super" is reserved ',
++           'for the super-constructor');
++    }
++
++    ctor(sub, sup);
++    function PseudoSuper() {}
++    PseudoSuper.prototype = sup.prototype;
++    sub.prototype = new PseudoSuper();
++    sub.prototype.constructor = sub;
++
++    setMemberMap(sub, members);
++    each(statics, simpleFunc(function(sname, staticMember) {
++      setPub(sub, sname, staticMember);
++    }));
++
++    // translator freezes sub and sub.prototype later.
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Taming mechanism
++  ////////////////////////////////////////////////////////////////////////
++
++  /**
++   * Arrange to handle read-faults on <tt>obj[name]</tt>
++   * by calling <tt>getHandler()</tt> as a method on the faulted
++   * object.
++   * <p>
++   * In order for this fault-handler to get control, it's important
++   * that no one does a conflicting allowRead().
++   */
++  function useGetHandler(obj, name, getHandler) {
++    obj[name + '_getter___'] = getHandler;
++  }
++
++  /**
++   * Arrange to handle call-faults on <tt>obj[name](args...)</tt> by
++   * calling <tt>applyHandler(args)</tt> as a method on the faulted
++   * object.
++   * <p>
++   * Note that <tt>applyHandler</tt> is called with a single argument,
++   * which is the list of arguments in the original call.
++   * <p>
++   * In order for this fault-handler to get control, it's important
++   * that no one does a conflicting allowCall(), allowSimpleFunc(), or
++   * allowMethod().
++   */
++  function useApplyHandler(obj, name, applyHandler) {
++    obj[name + '_handler___'] = applyHandler;
++  }
++
++  /**
++   * Arrange to handle call-faults on <tt>obj[name](args...)</tt> by
++   * calling <tt>callHandler(args...)</tt> as a method on the faulted
++   * object.
++   * <p>
++   * Note that <tt>callHandler</tt> is called with the same arguments
++   * as the original call.
++   * <p>
++   * In order for this fault-handler to get control, it's important
++   * that no one does a conflicting allowCall(), allowSimpleFunc(), or
++   * allowMethod().
++   */
++  function useCallHandler(obj, name, callHandler) {
++    useApplyHandler(obj, name, function(args) {
++      return callHandler.apply(this, args);
++    });
++  }
++
++  /**
++   * Arrange to handle set-faults on <tt>obj[name] = newValue</tt> by
++   * calling <tt>setHandler(newValue)</tt> as a method on the faulted
++   * object.
++   * <p>
++   * In order for this fault-handler to get control, it's important
++   * that no one does a conflicting allowSet().
++   */
++  function useSetHandler(obj, name, setHandler) {
++    obj[name + '_setter___'] = setHandler;
++  }
++
++  /**
++   * Arrange to handle delete-faults on <tt>delete obj[name]</tt> by
++   * calling <tt>deleteHandler()</tt> as a method on the faulted object.
++   * <p>
++   * In order for this fault-handler to get control, it's important
++   * that no one does a conflicting allowDelete().
++   */
++  function useDeleteHandler(obj, name, deleteHandler) {
++    obj[name + '_deleter___'] = deleteHandler;
++  }
++
++  /**
++   * Whilelist obj[name] as a simple function that can be either
++   * called or read.
++   */
++  function allowSimpleFunc(obj, name) {
++    simpleFunc(obj[name], name);
++    allowCall(obj, name);
++    allowRead(obj, name);
++  }
++
++  /**
++   * Whitelist constr.prototype[name] as a method that can be called
++   * on instances of constr.
++   */
++  function allowMethod(constr, name) {
++    method(constr, constr.prototype[name], name);
++    allowCall(constr.prototype, name);
++  }
++
++  /**
++   * Virtually replace constr.prototype[name] with a fault-handler
++   * wrapper that first verifies that <tt>this</tt> isn't frozen.
++   * <p>
++   * When a pre-existing Javascript method would mutate its object,
++   * we need to provide a fault handler instead to prevent such
++   * mutation from violating Caja semantics. In order for this fault
++   * handler to get control, it's important that no one does an
++   * allowCall(), allowSimpleFunc(), or allowMethod() on the
++   * original method.
++   */
++  function allowMutator(constr, name) {
++    var original = constr.prototype[name];
++    useApplyHandler(constr.prototype, name, function(args) {
++      if (isFrozen(this)) {
++        fail("Can't .", name, ' a frozen object');
++      }
++      return original.apply(this, args);
++    });
++  }
++
++  /**
++   * Verifies that regexp is something that can appear as a
++   * parameter to a Javascript method that would use it in a match.
++   * <p>
++   * If it is a RegExp, then this match might mutate it, which must
++   * not be allowed if regexp is frozen.
++   */
++  function enforceMatchable(regexp) {
++    if (regexp instanceof RegExp) {
++      if (isFrozen(regexp)) {
++        fail("Can't match with frozen RegExp: ", regexp);
++      }
++    }
++  }
++
++  /**
++   * A shorthand that happens to be useful here.
++   * <p>
++   * For all i in arg2s: func2(arg1,arg2s[i]).
++   */
++  function all2(func2, arg1, arg2s) {
++    var len = arg2s.length;
++    for (var i = 0; i < len; i += 1) {
++      func2(arg1, arg2s[i]);
++    }
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Taming decisions
++  ////////////////////////////////////////////////////////////////////////
++
++
++  all2(allowRead, Math, [
++    'E', 'LN10', 'LN2', 'LOG2E', 'LOG10E', 'PI', 'SQRT1_2', 'SQRT2'
++  ]);
++  all2(allowSimpleFunc, Math, [
++    'abs', 'acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'exp', 'floor',
++    'log', 'max', 'min', 'pow', 'random', 'round', 'sin', 'sqrt', 'tan'
++  ]);
++
++
++  ctor(Object, undefined, 'Object');
++  all2(allowMethod, Object, [
++    'toString', 'toLocaleString', 'valueOf', 'isPrototypeOf'
++  ]);
++  allowRead(Object.prototype, 'length');
++  useCallHandler(Object.prototype, 'hasOwnProperty',  function(name) {
++    name = String(name);
++    return canReadPub(this, name) && hasOwnProp(this, name);
++  });
++  var pie_ = Object.prototype.propertyIsEnumerable;
++  useCallHandler(Object.prototype, 'propertyIsEnumerable', function(name) {
++    name = String(name);
++    return canReadPub(this, name) && pie_.call(this, name);
++  });
++
++
++  /**
++   * A method of a constructed object can freeze its object by saying
++   * <tt>this.freeze_()</tt>.
++   * <p>
++   * Because this method ends in a "_", it is internal, so clients
++   * of a constructed object (a non-JSON container) cannot freeze it
++   * without its cooperation.
++   */
++  useCallHandler(Object.prototype, 'freeze_', function() {
++    return primFreeze(this);
++  });
++
++
++  // SECURITY HAZARD TODO(erights): Seems dangerous, but doesn't add
++  // risk. Or does it?
++  ctor(Function, Object, 'Function');
++  // SECURITY HAZARD TODO(erights): Seems dangerous, but doesn't add
++  // risk. Or does it?
++  allowRead(Function.prototype, 'prototype');
++
++  useCallHandler(Function.prototype, 'apply', function(that, realArgs) {
++    return asSimpleFunc(this).apply(that, realArgs[0]);
++  });
++  useCallHandler(Function.prototype, 'call', function(that, realArgs) {
++    return asSimpleFunc(this).apply(that, realArgs);
++  });
++
++
++  ctor(Array, Object, 'Array');
++  all2(allowMethod, Array, [
++    'concat', 'join', 'slice', 'indexOf', 'lastIndexOf'
++  ]);
++  all2(allowMutator, Array, [
++    'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'
++  ]);
++
++
++  ctor(String, Object, 'String');
++  allowSimpleFunc(String, 'fromCharCode');
++  all2(allowMethod, String, [
++    'charAt', 'charCodeAt', 'concat', 'indexOf', 'lastIndexOf',
++    'localeCompare', 'slice', 'substring',
++    'toLowerCase', 'toLocaleLowerCase', 'toUpperCase', 'toLocaleUpperCase'
++  ]);
++  useCallHandler(String.prototype, 'match', function(regexp) {
++    enforceMatchable(regexp);
++    return this.match(regexp);
++  });
++  useCallHandler(String.prototype, 'replace', function(searchValue,
++                                                       replaceValue) {
++    enforceMatchable(searchValue);
++    return this.replace(searchValue, replaceValue);
++  });
++  useCallHandler(String.prototype, 'search', function(regexp) {
++    enforceMatchable(regexp);
++    return this.search(regexp);
++  });
++  useCallHandler(String.prototype, 'split', function(separator, limit) {
++    enforceMatchable(separator);
++    return this.split(separator, limit);
++  });
++
++
++  ctor(Boolean, Object, 'Boolean');
++
++
++  ctor(Number, Object, 'Number');
++  all2(allowRead, Number, [
++    'MAX_VALUE', 'MIN_VALUE', 'NaN',
++    'NEGATIVE_INFINITY', 'POSITIVE_INFINITY'
++  ]);
++  all2(allowMethod, Number, [
++    'toFixed', 'toExponential', 'toPrecision'
++  ]);
++
++
++  ctor(Date, Object, 'Date');
++  allowSimpleFunc(Date, 'parse');
++  allowSimpleFunc(Date, 'UTC');
++
++  all2(allowMethod, Date, [
++    'toDateString', 'toTimeString', 'toUTCString',
++    'toLocaleString', 'toLocaleDateString', 'toLocaleTimeString',
++    'toISOString',
++    'getDay', 'getUTCDay', 'getTimezoneOffset',
++
++    'getTime', 'getFullYear', 'getUTCFullYear', 'getMonth', 'getUTCMonth',
++    'getDate', 'getUTCDate', 'getHours', 'getUTCHours',
++    'getMinutes', 'getUTCMinutes', 'getSeconds', 'getUTCSeconds',
++    'getMilliseconds', 'getUTCMilliseconds'
++  ]);
++  all2(allowMutator, Date, [
++    'setTime', 'setFullYear', 'setUTCFullYear', 'setMonth', 'setUTCMonth',
++    'setDate', 'setUTCDate', 'setHours', 'setUTCHours',
++    'setMinutes', 'setUTCMinutes', 'setSeconds', 'setUTCSeconds',
++    'setMilliseconds', 'setUTCMilliseconds'
++  ]);
++
++
++  ctor(RegExp, Object, 'RegExp');
++  allowMutator(RegExp, 'exec');
++  allowMutator(RegExp, 'test');
++
++  all2(allowRead, RegExp, [
++    'source', 'global', 'ignoreCase', 'multiline', 'lastIndex'
++  ]);
++
++
++  ctor(Error, Object, 'Error');
++  allowRead(Error, 'name');
++  allowRead(Error, 'message');
++  ctor(EvalError, Error, 'EvalError');
++  ctor(RangeError, Error, 'RangeError');
++  ctor(ReferenceError, Error, 'ReferenceError');
++  ctor(SyntaxError, Error, 'SyntaxError');
++  ctor(TypeError, Error, 'TypeError');
++  ctor(URIError, Error, 'URIError');
++
++
++  var sharedOuters;
++
++  ////////////////////////////////////////////////////////////////////////
++  // Module loading
++  ////////////////////////////////////////////////////////////////////////
++
++  var myNewModuleHandler;
++
++  /**
++   * Gets the current module handler.
++   */
++  function getNewModuleHandler() {
++    return myNewModuleHandler;
++  }
++
++  /**
++   * Registers a new-module-handler, to be called back when a new
++   * module is loaded.
++   * <p>
++   * This callback mechanism is provided so that translated Caja
++   * modules can be loaded from a trusted site with the
++   * &lt;script&gt; tag, which runs its script as a statement, not
++   * an expression. The callback is of the form
++   * <tt>moduleHandler.handle(newModule)</tt>.
++   */
++  function setNewModuleHandler(newModuleHandler) {
++    myNewModuleHandler = newModuleHandler;
++  }
++
++  /**
++   * A new-module-handler which does nothing.
++   */
++  var ignoreNewModule = freeze({
++    handle: simpleFunc(function(newModule){})
++  });
++
++  /**
++   * Makes and returns a fresh "normal" module handler whose outers
++   * are initialized to a copy of the sharedOuters.
++   * <p>
++   * This handles a new module by calling it, passing it the outers
++   * object held in this handler. Successive modules handled by the
++   * same "normal" handler thereby see a simulation of successive
++   * updates to a shared global scope.
++   */
++  function makeNormalNewModuleHandler() {
++    var outers = copy(sharedOuters);
++    return freeze({
++      getOuters: simpleFunc(function() { return outers; }),
++      setOuters: simpleFunc(function(newOuters) { outers = newOuters; }),
++      handle: simpleFunc(function(newModule) {
++        newModule(outers);
++      })
++    });
++  }
++
++  /**
++   * A module is a plugin-maker function.
++   * <p>
++   * loadModule(module) marks module as a simpleFunc, freezes it,
++   * asks the current new-module-handler to handle it (thereby
++   * notifying the handler), and returns the new module.
++   */
++  function loadModule(module) {
++    callPub(myNewModuleHandler, 'handle',
++            [primFreeze(simpleFunc(module))]);
++    return module;
++  }
++
++  var registeredOuters = [];
++
++  /**
++   * Gets or assigns the id associated with this (assumed to be)
++   * outers object, registering it so that
++   * <tt>getOuters(getId(outers)) ==== outers</tt>.
++   * <p>
++   * This system of registration and identification allows us to
++   * cajole html such as
++   * <pre>&lt;a onmouseover="alert(1)"&gt;Mouse here&lt;/a&gt;</pre>
++   * into html-writing JavaScript such as<pre>
++   * ___OUTERS___.document.innerHTML = "
++   *  &lt;a onmouseover=\"
++   *    (function(___OUTERS___) {
++   *      ___OUTERS___.alert(1);
++   *    })(___.getOuters(" + ___.getId(___OUTERS___) + "))
++   *  \"&gt;Mouse here&lt;/a&gt;
++   * ";
++   * </pre>
++   * If this is executed by a plugin whose outers is assigned id 42,
++   * it generates html with the same meaning as<pre>
++   * &lt;a onmouseover="___.getOuters(42).alert(1)"&gt;Mouse here&lt;/a&gt;
++   * </pre>
++   * <p>
++   * An outers is not registered and no id is assigned to it until the
++   * first call to <tt>getId</tt>. This way, an outers that is never
++   * registered, or that has been <tt>unregister</tt>ed since the last
++   * time it was registered, will still be garbage collectable.
++   */
++  function getId(outers) {
++    enforceType(outers, 'object', 'outers');
++    var id;
++    if ('id___' in outers) {
++      id = enforceType(outers.id___, 'number', 'id');
++    } else {
++      id = outers.id___ = registeredOuters.length;
++    }
++    registeredOuters[id] = outers;
++    return id;
++  }
++
++  /**
++   * Gets the outers object registered under this id.
++   * <p>
++   * If it has been <tt>unregistered</tt> since the last
++   * <tt>getId</tt> on it, then <tt>getOuters</tt> will fail.
++   */
++  function getOuters(id) {
++    var result = registeredOuters[enforceType(id, 'number', 'id')];
++    if (result === undefined) {
++      fail('outers#', id, ' unregistered');
++    }
++    return result;
++  }
++
++  /**
++   * If you know that this <tt>outers</tt> no longers needs to be
++   * accessed by <tt>getOuters</tt>, then you should
++   * <tt>unregister</tt> it so it can be garbage collected.
++   * <p>
++   * After unregister()ing, the id is not reassigned, and the outers
++   * remembers its id. If asked for another <tt>getId</tt>, it
++   * reregisters itself at its old id.
++   */
++  function unregister(outers) {
++    enforceType(outers, 'object', 'outers');
++    if ('id___' in outers) {
++      var id = enforceType(outers.id___, 'number', 'id');
++      registeredOuters[id] = undefined;
++    }
++  }
++
++  ////////////////////////////////////////////////////////////////////////
++  // Exports
++  ////////////////////////////////////////////////////////////////////////
++
++  caja = {
++
++    // Diagnostics and condition enforcement
++    getLogFunc: getLogFunc,
++    setLogFunc: setLogFunc,
++    log: log,
++
++    fail: fail,
++    enforce: enforce,
++    enforceType: enforceType,
++    enforceNat: enforceNat,
++
++    // walking prototype chain, checking JSON containers
++    isJSONContainer: isJSONContainer,
++    freeze: freeze,
++    copy: copy,
++    snapshot: snapshot,
++
++    // Accessing properties
++    canReadPub: canReadPub,       readPub: readPub,
++    canEnumPub: canEnumPub,
++    canEnumOwn: canEnumOwn,
++    BREAK: BREAK,                 each: each,
++    canCallPub: canCallPub,       callPub: callPub,
++    canSetPub: canSetPub,         setPub: setPub,
++    canDeletePub: canDeletePub,   deletePub: deletePub,
++
++    // Other
++    def: def
++  };
++
++  sharedOuters = {
++    caja: caja,
++
++    'null': null,
++    'false': false,
++    'true': true,
++    'NaN': NaN,
++    'Infinity': Infinity,
++    'undefined': undefined,
++    parseInt: parseInt,
++    parseFloat: parseFloat,
++    isNaN: isNaN,
++    isFinite: isFinite,
++    decodeURI: decodeURI,
++    decodeURIComponent: decodeURIComponent,
++    encodeURI: encodeURI,
++    encodeURIComponent: encodeURIComponent,
++    Math: Math,
++
++    Object: Object,
++    Array: Array,
++    String: String,
++    Boolean: Boolean,
++    Number: Number,
++    Date: Date,
++    RegExp: RegExp,
++
++    Error: Error,
++    EvalError: EvalError,
++    RangeError: RangeError,
++    ReferenceError: ReferenceError,
++    SyntaxError: SyntaxError,
++    TypeError: TypeError,
++    URIError: URIError
++  };
++
++  each(sharedOuters, simpleFunc(function(k, v) {
++    switch (typeof v) {
++    case 'object':
++      if (v !== null) { primFreeze(v); }
++      break;
++    case 'function':
++      primFreeze(v);
++      break;
++    }
++  }));
++  primFreeze(sharedOuters);
++
++  ___ = {
++
++    // Privileged fault handlers
++    getKeeper: getKeeper,
++    setKeeper: setKeeper,
++
++    // walking prototype chain, checking JSON containers
++    directConstructor: directConstructor,
++    isFrozen: isFrozen,
++    primFreeze: primFreeze,
++
++    // Accessing property attributes
++    canRead: canRead,             allowRead: allowRead,
++    canEnum: canEnum,             allowEnum: allowEnum,
++    canCall: canCall,             allowCall: allowCall,
++    canSet: canSet,               allowSet: allowSet,
++    canDelete: canDelete,         allowDelete: allowDelete,
++
++    // Classifying functions
++    isCtor: isCtor,
++    isMethod: isMethod,
++    isSimpleFunc: isSimpleFunc,
++    ctor: ctor,                   asCtorOnly: asCtorOnly,
++    asCtor: asCtor,
++    method: method,               asMethod: asMethod,
++    simpleFunc: simpleFunc,       asSimpleFunc: asSimpleFunc,
++    setMember: setMember,
++    setMemberMap: setMemberMap,
++
++    // Accessing properties
++    canReadProp: canReadProp,     readProp: readProp,
++    canInnocentEnum: canInnocentEnum,
++    canEnumProp: canEnumProp,
++    canCallProp: canCallProp,     callProp: callProp,
++    canSetProp: canSetProp,       setProp: setProp,
++    canDeleteProp: canDeleteProp, deleteProp: deleteProp,
++
++    // Other
++    hasOwnProp: hasOwnProp,
++    args: args,
++
++    // Taming mechanism
++    useGetHandler: useGetHandler,
++    useApplyHandler: useApplyHandler,
++    useCallHandler: useCallHandler,
++    useSetHandler: useSetHandler,
++    useDeleteHandler: useDeleteHandler,
++
++    allowSimpleFunc: allowSimpleFunc,
++    allowMethod: allowMethod,
++    allowMutator: allowMutator,
++    enforceMatchable: enforceMatchable,
++    all2: all2,
++
++    // Taming decisions
++    sharedOuters: sharedOuters,
++
++    // Module loading
++    getNewModuleHandler: getNewModuleHandler,
++    setNewModuleHandler: setNewModuleHandler,
++    ignoreNewModule: ignoreNewModule,
++    makeNormalNewModuleHandler: makeNormalNewModuleHandler,
++    loadModule: loadModule,
++
++    getId: getId,
++    getOuters: getOuters,
++    unregister: unregister
++  };
++
++  each(caja, simpleFunc(function(k, v) {
++    if (k in ___) {
++      fail('internal: initialization conflict: ', k);
++    }
++    if (typeof v === 'function') {
++      simpleFunc(v);
++      allowCall(caja, k);
++    }
++    ___[k] = v;
++  }));
++  primFreeze(caja);
++
++  setNewModuleHandler(makeNormalNewModuleHandler());
++
++})(this);
+diff -urN php-old/gadgets/features/caja/feature.xml php-new/gadgets/features/caja/feature.xml
+--- php-old/gadgets/features/caja/feature.xml	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/caja/feature.xml	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,30 @@
++<?xml version="1.0"?>
++<!--
++Licensed to the Apache Software Foundation (ASF) under one
++or more contributor license agreements. See the NOTICE file
++distributed with this work for additional information
++regarding copyright ownership. The ASF licenses this file
++to you under the Apache License, Version 2.0 (the
++"License"); you may not use this file except in compliance
++with the License. You may obtain a copy of the License at
++
++http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing,
++software distributed under the License is distributed on an
++"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++KIND, either express or implied. See the License for the
++specific language governing permissions and limitations under the License.
++
++  TODO(doll): The caja.js file referenced here should come from maven
++  or something. We should not have our own copy of it.
++-->
++<feature>
++  <name>caja</name>
++  <gadget>
++    <script src="caja.js"></script>
++    <script src="html-sanitizer.js"></script>
++    <script src="log-to-console.js"></script>
++    <script src="permissive.js"></script>
++  </gadget>
++</feature>
+diff -urN php-old/gadgets/features/caja/html-sanitizer.js php-new/gadgets/features/caja/html-sanitizer.js
+--- php-old/gadgets/features/caja/html-sanitizer.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/caja/html-sanitizer.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,425 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++// mikesamuel@gmail.com
++
++/**
++ * Strips unsafe tags and attributes from html.
++ * @param {String} html to sanitize
++ * @param {Function} opt_urlXform : String -> String -- a transform to apply to
++ *   url attribute values.
++ * @param {Function} opt_nmTokenXform : String -> String -- a transform to apply
++ *   to name attribute values.
++ * @return {String} html
++ */
++var html_sanitize = (function () {
++
++  // hide all the whitelists and other state so they can't be interfered with
++
++  /** token definitions. */
++  var TOK_ENTITY = /^&(?:\#[0-9]+|\#x[0-9a-f]+|\w+);/i;
++  var TOK_COMMENT = /^<!--[\s\S]*?-->/;
++  var TOK_TAG_BEGIN = /^<\/?[a-z][a-z0-9]*/i;
++  var TOK_TAG_END = /^\/?>/;
++  var TOK_ATTRIB = /^\w+(\s*=\s*(?:\"[^\"]*\"|\'[^\']*\'|[^>\"\'\s]*))?/;
++  var TOK_SPACE = /^\s+/;
++  var TOK_OTHER = /^[^&<]+/;
++  var TOK_CRUFT = /^[<&]/;
++  var TOK_IGNORABLE_CRUFT = /^[^\w\s>]+/;
++
++  /** the token definitions used when we are outside a tag. */
++  var TOKS_NOTTAG = [
++      TOK_ENTITY,
++      TOK_COMMENT,
++      TOK_TAG_BEGIN,
++      TOK_OTHER,
++      TOK_CRUFT
++  ];
++  /** token definitions used inside a tag. */
++  var TOKS_INTAG = [
++      TOK_SPACE,
++      TOK_ATTRIB,
++      TOK_TAG_END,
++      TOK_IGNORABLE_CRUFT
++  ];
++
++  /**
++   * split html into tokens using the regexps above.
++   * This also does some normalization of tokens, escaping specials that don't
++   * appear to be part of a larger token.
++   */
++  var lex = function (html) {
++    var tokens = [];
++    var inTag = false; // 0 outside tag, 1 inside tag
++    while (html) {
++      var m = null;
++      var tok = null;
++      if (!inTag) {
++        for (var i = 0; i < TOKS_NOTTAG.length; ++i) {
++          m = html.match(TOKS_NOTTAG[i]);
++          if (m) {
++            tok = TOKS_NOTTAG[i];
++            break;
++          }
++        }
++        if (tok === TOK_TAG_BEGIN) { inTag = true; }
++      } else {
++        for (var i = 0; i < TOKS_INTAG.length; ++i) {
++          m = html.match(TOKS_INTAG[i]);
++          if (m) {
++            tok = TOKS_INTAG[i];
++            break;
++          }
++        }
++        if (tok === TOK_TAG_END) { inTag = false; }
++      }
++      var tokstr = m[0];
++      html = html.substring(tokstr.length);
++      if (tok === TOK_CRUFT) {
++        tokstr = tokstr == '<' ? '&lt;' : '&amp;';
++      } else if (tok === TOK_OTHER) {
++        tokstr = tokstr.replace(/>/g, '&gt;');
++      } else if (tok == TOK_SPACE) {
++        tokstr = ' ';
++      } else if (tok === TOK_ATTRIB) {
++        tokstr = tokstr.replace(/^(\w+)\s*=\s*/, '$1=');
++      }
++      if (tok !== TOK_IGNORABLE_CRUFT && tok != TOK_COMMENT) {
++        tokens.push(tokstr, tok);
++      }
++    }
++    return tokens;
++  };
++
++  // whitelists of elements and attributes
++
++  /** element flags. */
++  var OPTIONAL_ENDTAG = 1,
++          BREAKS_FLOW = 2,
++                EMPTY = 4,
++               UNSAFE = 8;
++
++  /** attribute flags */
++  var SCRIPT_TYPE = 1,
++       STYLE_TYPE = 2,
++     NMTOKEN_TYPE = 4,
++         URI_TYPE = 8;
++
++  /**
++   * All the HTML4 elements.
++   * U - unsafe, E - empty, B - breaks flow, O - optional endtag
++   */
++  var ELEMENTS = {
++    A          : 0,
++    ABBR       : 0,
++    ACRONYM    : 0,
++    ADDRESS    : 0,
++    APPLET     : UNSAFE,
++    AREA       : EMPTY,
++    B          : 0,
++    BASE       : UNSAFE|EMPTY,
++    BASEFONT   : UNSAFE|EMPTY,
++    BDO        : 0,
++    BIG        : 0,
++    BLOCKQUOTE : BREAKS_FLOW,
++    BODY       : UNSAFE|OPTIONAL_ENDTAG,
++    BR         : EMPTY|BREAKS_FLOW,
++    BUTTON     : 0,
++    CAPTION    : 0,
++    CENTER     : BREAKS_FLOW,
++    CITE       : 0,
++    CODE       : 0,
++    COL        : EMPTY,
++    COLGROUP   : OPTIONAL_ENDTAG,
++    DD         : OPTIONAL_ENDTAG|BREAKS_FLOW,
++    DEL        : 0,
++    DFN        : 0,
++    DIR        : BREAKS_FLOW,
++    DIV        : BREAKS_FLOW,
++    DL         : BREAKS_FLOW,
++    DT         : OPTIONAL_ENDTAG|BREAKS_FLOW,
++    EM         : 0,
++    FIELDSET   : 0,
++    FONT       : 0,
++    FORM       : BREAKS_FLOW,
++    FRAME      : UNSAFE|EMPTY,
++    FRAMESET   : UNSAFE,
++    H1         : BREAKS_FLOW,
++    H2         : BREAKS_FLOW,
++    H3         : BREAKS_FLOW,
++    H4         : BREAKS_FLOW,
++    H5         : BREAKS_FLOW,
++    H6         : BREAKS_FLOW,
++    HEAD       : UNSAFE|OPTIONAL_ENDTAG|BREAKS_FLOW,
++    HR         : EMPTY|BREAKS_FLOW,
++    HTML       : UNSAFE|OPTIONAL_ENDTAG|BREAKS_FLOW,
++    I          : 0,
++    IFRAME     : UNSAFE,
++    IMG        : EMPTY,
++    INPUT      : EMPTY,
++    INS        : 0,
++    ISINDEX    : UNSAFE|EMPTY|BREAKS_FLOW,
++    KBD        : 0,
++    LABEL      : 0,
++    LEGEND     : 0,
++    LI         : OPTIONAL_ENDTAG|BREAKS_FLOW,
++    LINK       : UNSAFE|EMPTY,
++    MAP        : 0,
++    MENU       : BREAKS_FLOW,
++    META       : UNSAFE|EMPTY,
++    NOFRAMES   : UNSAFE|BREAKS_FLOW,
++    NOSCRIPT   : UNSAFE,
++    OBJECT     : UNSAFE,
++    OL         : BREAKS_FLOW,
++    OPTGROUP   : 0,
++    OPTION     : OPTIONAL_ENDTAG,
++    P          : OPTIONAL_ENDTAG|BREAKS_FLOW,
++    PARAM      : UNSAFE|EMPTY,
++    PRE        : BREAKS_FLOW,
++    Q          : 0,
++    S          : 0,
++    SAMP       : 0,
++    SCRIPT     : UNSAFE,
++    SELECT     : 0,
++    SMALL      : 0,
++    SPAN       : 0,
++    STRIKE     : 0,
++    STRONG     : 0,
++    STYLE      : UNSAFE,
++    SUB        : 0,
++    SUP        : 0,
++    TABLE      : BREAKS_FLOW,
++    TBODY      : OPTIONAL_ENDTAG,
++    TD         : OPTIONAL_ENDTAG|BREAKS_FLOW,
++    TEXTAREA   : 0,
++    TFOOT      : OPTIONAL_ENDTAG,
++    TH         : OPTIONAL_ENDTAG|BREAKS_FLOW,
++    THEAD      : OPTIONAL_ENDTAG,
++    TITLE      : UNSAFE|BREAKS_FLOW,
++    TR         : OPTIONAL_ENDTAG|BREAKS_FLOW,
++    TT         : 0,
++    U          : 0,
++    UL         : BREAKS_FLOW,
++    VAR        : 0
++  };
++
++  /**
++   * All the HTML4 attributes
++   */
++  var ATTRIBS = {
++    ABBR            : 0,
++    ACCEPT          : 0,
++    'ACCEPT-CHARSET': 0,
++    ACCESSKEY       : 0,
++    ACTION          : URI_TYPE,
++    ALIGN           : 0,
++    ALINK           : 0,
++    ALT             : 0,
++    ARCHIVE         : URI_TYPE,
++    AXIS            : 0,
++    BACKGROUND      : URI_TYPE,
++    BGCOLOR         : 0,
++    BORDER          : 0,
++    CELLPADDING     : 0,
++    CELLSPACING     : 0,
++    CHAR            : 0,
++    CHAROFF         : 0,
++    CHARSET         : 0,
++    CHECKED         : 0,
++    CITE            : URI_TYPE,
++    CLASS           : NMTOKEN_TYPE,
++    CLASSID         : URI_TYPE,
++    CLEAR           : 0,
++    CODE            : 0,
++    CODEBASE        : URI_TYPE,
++    CODETYPE        : 0,
++    COLOR           : 0,
++    COLS            : 0,
++    COLSPAN         : 0,
++    COMPACT         : 0,
++    CONTENT         : 0,
++    COORDS          : 0,
++    DATA            : URI_TYPE,
++    DATETIME        : 0,
++    DECLARE         : 0,
++    DEFER           : 0,
++    DIR             : 0,
++    DISABLED        : 0,
++    ENCTYPE         : 0,
++    FACE            : 0,
++    FOR             : NMTOKEN_TYPE,
++    FRAME           : 0,
++    FRAMEBORDER     : 0,
++    HEADERS         : 0,
++    HEIGHT          : 0,
++    HREF            : URI_TYPE,
++    HREFLANG        : 0,
++    HSPACE          : 0,
++    'HTTP-EQUIV'    : 0,
++    ID              : NMTOKEN_TYPE,
++    ISMAP           : 0,
++    LABEL           : 0,
++    LANG            : 0,
++    LANGUAGE        : 0,
++    LINK            : 0,
++    LONGDESC        : URI_TYPE,
++    MARGINHEIGHT    : 0,
++    MARGINWIDTH     : 0,
++    MAXLENGTH       : 0,
++    MEDIA           : 0,
++    METHOD          : 0,
++    MULTIPLE        : 0,
++    NAME            : NMTOKEN_TYPE,  // but not really for inputs
++    NOHREF          : 0,
++    NORESIZE        : 0,
++    NOSHADE         : 0,
++    NOWRAP          : 0,
++    OBJECT          : 0,
++    ONBLUR          : SCRIPT_TYPE,
++    ONCHANGE        : SCRIPT_TYPE,
++    ONCLICK         : SCRIPT_TYPE,
++    ONDBLCLICK      : SCRIPT_TYPE,
++    ONFOCUS         : SCRIPT_TYPE,
++    ONKEYDOWN       : SCRIPT_TYPE,
++    ONKEYPRESS      : SCRIPT_TYPE,
++    ONKEYUP         : SCRIPT_TYPE,
++    ONLOAD          : SCRIPT_TYPE,
++    ONMOUSEDOWN     : SCRIPT_TYPE,
++    ONMOUSEMOVE     : SCRIPT_TYPE,
++    ONMOUSEOUT      : SCRIPT_TYPE,
++    ONMOUSEOVER     : SCRIPT_TYPE,
++    ONMOUSEUP       : SCRIPT_TYPE,
++    ONRESET         : SCRIPT_TYPE,
++    ONSELECT        : SCRIPT_TYPE,
++    ONSUBMIT        : SCRIPT_TYPE,
++    ONUNLOAD        : SCRIPT_TYPE,
++    PROFILE         : URI_TYPE,
++    PROMPT          : 0,
++    READONLY        : 0,
++    REL             : 0,
++    REV             : 0,
++    ROWS            : 0,
++    ROWSPAN         : 0,
++    RULES           : 0,
++    SCHEME          : 0,
++    SCOPE           : 0,
++    SCROLLING       : 0,
++    SELECTED        : 0,
++    SHAPE           : 0,
++    SIZE            : 0,
++    SPAN            : 0,
++    SRC             : URI_TYPE,
++    STANDBY         : 0,
++    START           : 0,
++    STYLE           : STYLE_TYPE,
++    SUMMARY         : 0,
++    TABINDEX        : 0,
++    TARGET          : 0,
++    TEXT            : 0,
++    TITLE           : 0,
++    TYPE            : 0,
++    USEMAP          : URI_TYPE,
++    VALIGN          : 0,
++    VALUE           : 0,
++    VALUETYPE       : 0,
++    VERSION         : 0,
++    VLINK           : 0,
++    VSPACE          : 0,
++    WIDTH           : 0
++  };
++
++  var ENTITIES = {
++    LT   : '<',
++    GT   : '>',
++    AMP  : '&',
++    NBSP : '\240',
++    QUOT : '"',
++    APOS : '\''
++  };
++
++  function escapeOneEntity(m) {
++    var name = m[1].toUpperCase();
++    if (ENTITIES.hasOwnProperty(s)) { return ENTITIES[name]; }
++    m = name.match(/^#(\d+)$/);
++    if (m) {
++      return String.fromCharCode(parseInt(m[1], 10));
++    } else if (!!(m = name.match(/^#x([0-9A-F]+)$/))) {
++      return String.fromCharCode(parseInt(m[1], 16));
++    }
++    return '';
++  }
++
++  function unescapeEntities(s) {
++    return s.replace(/&(#\d+|#x[\da-f]+|\w+);/g, escapeOneEntity);
++  }
++
++  function unescapedValueForAttrib(s) {
++    var m = s.match(/=\s*([\"\']?)?(.*)\1/);
++    if (m) {
++      return unescapeEntities(m[2]);
++    } else {
++      return null;
++    }
++  }
++
++  function escapeAttrib(s) {
++    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
++      .replace(/\"/g, '&quot;');
++  }
++
++  /** actually does the sanitizing. */
++  return function html_sanitize(html, opt_urlXform, opt_nmTokenXform) {
++    var toks = lex(html);
++    var out = [];
++
++    var ignoring = false;
++    for (var i = 0; i < toks.length; ++i) {
++      var tok = toks[i], type = toks[++i];
++      //alert('tok=' + tok + ', type=' + type + ', ignoring=' + ignoring);
++      if (TOK_TAG_BEGIN === type) {
++        var name = tok.replace(/^[<\/]+/, '').toUpperCase();
++        ignoring = !ELEMENTS.hasOwnProperty(name) || (ELEMENTS[name] & UNSAFE);
++      } else if (TOK_ATTRIB === type && !ignoring) {
++        var name = tok.match(/\w+/)[0].toUpperCase();
++        if (!ATTRIBS.hasOwnProperty(name)) { continue; }
++        var flags = ATTRIBS[name];
++        if (flags & (SCRIPT_TYPE | STYLE_TYPE)) { continue; }
++        if (flags) {
++          // apply transforms
++          // unescape value, transform it.  skip if null, otherwise reescape.
++          var value = unescapedValueForAttrib(tok);
++          if (null == value) { continue; }
++          if ((flags & URI_TYPE) && opt_urlXform) {
++            value = opt_urlXform(value);
++          }
++          if ((flags & NMTOKEN_TYPE) && opt_nmTokenXform) {
++            value = opt_nmTokenXform(value);
++          }
++          if (null == value) { continue; }
++          tok = name + '="' + escapeAttrib(value) + '"';
++        }
++      }
++      if (!ignoring) { out.push(tok); }
++      // TODO: some way of enforcing attribute constraints
++      if (TOK_TAG_END === type) { ignoring = false; }
++    }
++    return out.join('');
++  };
++
++})();
+diff -urN php-old/gadgets/features/caja/log-to-console.js php-new/gadgets/features/caja/log-to-console.js
+--- php-old/gadgets/features/caja/log-to-console.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/caja/log-to-console.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,48 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++// If this module is loaded after caja.js is loaded, and in an
++// environment (such as produced by turning on Firebug) where
++// <tt>console.log</tt> is a function, then it will register
++// (a wrapper around) <tt>console.log</tt> with
++// <tt>___.setLogFunc()</tt> so caja.js will log its diagnostics
++// to the Firebug console.
++
++// If you load triv-logger.js and log-to-console.js into the same
++// system, the last one loaded wins.
++
++// This module is written in Javascript, not Caja, and would be
++// rejected by the Caja translator.
++
++
++(function(global) {
++
++  if (global.___ &&
++      global.console &&
++      typeof global.console.log === 'function') {
++
++    ___.setLogFunc(function(str, opt_stop) {
++      global.console.log(str);
++      if (opt_stop) {
++        ({}).noSuchMethod(str);
++      }
++    });
++  }
++
++})(this);
+diff -urN php-old/gadgets/features/caja/permissive.js php-new/gadgets/features/caja/permissive.js
+--- php-old/gadgets/features/caja/permissive.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/caja/permissive.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,165 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++// This module overrides the generic fault-handlers from the Caja
++// runtime library in order to permit access to virtually all
++// pre-existing JavaScript APIs (such as the browser environment).
++// Loading this module thereby waives all protection. Instead, it logs
++// the first access in order to prioritize taming decisions. After
++// logging the first access, it explicitly allows further accesses, so
++// that they won't generate further faults. After paying for these
++// initial faults, the program will then run at full Caja speed,
++// giving us a realistic measure of the slowdown as well.
++
++// This module is written in Javascript, not Caja, and would be
++// rejected by the Caja translator. It depends on caja.js, and should
++// only be loaded after caja.js.
++
++
++(function() {
++
++  ___.log('BEWARE: permissive.js loaded');
++  
++  /**
++   * 
++   */
++  function find(obj, name) {
++    var result = obj;
++    while (typeof result === 'object' || typeof result === 'function') {
++      if (___.hasOwnProp(result, name)) {
++        return result;
++      }
++      if (___.hasOwnProp(result, '__proto__')) {
++        result = result.__proto__;
++      } else {
++        result = ___.directConstructor(result).prototype;
++      }
++    }
++    ___.fail("Internal: can't find '.", name, "' in: ", obj);
++  }
++  
++  var oldKeeper = ___.getKeeper();
++
++  var enabled = false;
++  
++  ___.setKeeper({
++
++    /**
++     *
++     */
++    toString: function() { return '<Permissive Keeper>'; },
++
++    /**
++     *
++     */
++    isEnabled: function() { return enabled; },
++
++    /**
++     * After loading permissive, one can 
++     * <tt>___.getKeeper().setEnabled(false)</tt>
++     * to disable the permissive behavior of the permissive keeper.
++     * <p>
++     * Note that this only causes it to stop allowing newly faulted
++     * things, but does not reverse the allowances it has already made
++     * in reaction to faults when it was enabled. In other words,
++     * disabling this keeper is a <i>desist</i>, not an
++     * <i>undo</i>. To get the effect of an undo, you must reload the
++     * page. (Or, in a non-browser environment, you must still somehow
++     * rebuild your live JavaScript environment.)
++     */
++    setEnabled: function(newEnabled) { 
++      if (newEnabled) {
++        ___.log('BEWARE: By enabling permissive.js, ' +
++                'all Caja security is hereby waived.');
++      } else {
++        ___.log('BEWARE: Disabling permissive.js only stops it ' +
++                'from allowing further operations in response to new ' +
++                'faults. It does not disallow those operations ' +
++                'already allowed. Consider reloading the page.');
++      }
++      enabled = newEnabled; 
++    },
++
++    /**
++     * 
++     */
++    handleRead: function(obj, name) {
++      if (enabled && name in obj) {
++        var proto = find(obj, name);
++        if (proto === obj) {
++          ___.log('Allowing read of (' + obj + ').' + name);
++        } else {
++          var constr = proto.constructor;
++          ___.log('Allowing read of ".' + name + '" for: ' + constr);
++        }
++        ___.allowRead(proto, name);
++        return obj[name];
++      }
++      return oldKeeper.handleRead(obj, name);
++    },
++
++    /**
++     * 
++     */
++    handleCall: function(obj, name, args) {
++      if (enabled && typeof obj[name] === 'function') {
++        var proto = find(obj, name);
++        if (proto === obj) {
++          ___.log('Allowing call of (' + obj + ').' + name + '()');
++        } else {
++          var constr = proto.constructor;
++          ___.log('Allowing call of ".' + name + '()" for: ' + constr);
++        }
++        ___.allowCall(proto, name);
++        return obj[name].apply(obj, args);
++      }
++      return oldKeeper.handleCall(obj, name, args);
++    },
++
++    /**
++     * 
++     */
++    handleSet: function(obj, name, val) {
++      if (enabled) {
++        ___.log('Allowing (' + obj + ').' + name + ' = ...');
++        ___.allowSet(obj, name);
++        obj[name] = val;
++        if (obj[name] === val) {
++          return val;
++        }
++      }
++      return oldKeeper.handleSet(obj, name, val);
++    },
++
++    /**
++     * 
++     */
++    handleDelete: function(obj, name) {
++      if (enabled && ___.hasOwnProp(obj, name)) {
++        ___.log('Allowing delete (' + obj + ').' + name);
++        ___.allowDelete(obj, name);
++        if (delete obj[name]) {
++          return true;
++        }
++      }
++      return oldKeeper.handleDelete(obj, name);
++    }
++  });
++  
++})();
+diff -urN php-old/gadgets/features/core/core.js php-new/gadgets/features/core/core.js
+--- php-old/gadgets/features/core/core.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/core/core.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,20 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++var gadgets = gadgets || {};
+diff -urN php-old/gadgets/features/core/feature.xml php-new/gadgets/features/core/feature.xml
+--- php-old/gadgets/features/core/feature.xml	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/core/feature.xml	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,38 @@
++<?xml version="1.0"?>
++<!--
++  Licensed to the Apache Software Foundation (ASF) under one
++  or more contributor license agreements. See the NOTICE file
++  distributed with this work for additional information
++  regarding copyright ownership. The ASF licenses this file
++  to you under the Apache License, Version 2.0 (the
++  "License"); you may not use this file except in compliance
++  with the License. You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing,
++  software distributed under the License is distributed on an
++  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++  KIND, either express or implied. See the License for the
++  specific language governing permissions and limitations under the License.
++-->
++<feature>
++  <name>core</name>
++  <gadget>
++    <script src="core.js"/>
++    <script src="util.js"/>
++    <script src="prefs.js"/>
++    <script src="json.js"/>
++    <script src="io.js"/>
++    <script><![CDATA[
++      gadgets.io.init({
++        proxyUrl: "proxy?url=%url%",
++        jsonProxyUrl: "proxy?output=js"
++      });
++    ]]></script>
++    <script src="legacy.js"/>
++  </gadget>
++  <container>
++    <script src="json.js"/>
++  </container>
++</feature>
+diff -urN php-old/gadgets/features/core/io.js php-new/gadgets/features/core/io.js
+--- php-old/gadgets/features/core/io.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/core/io.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,259 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++var gadgets = gadgets || {};
++
++/**
++ * @fileoverview Provides remote content retrieval facilities.
++ *     Available to every gadget.
++ */
++
++/**
++ * @static
++ * @class Provides remote content retrieval functions.
++ * @name gadgets.io
++ */
++
++gadgets.io = function() {
++  /**
++   * Holds configuration-related data such as proxy urls.
++   */
++  var config = {};
++
++  /**
++   * Internal facility to create an xhr request.
++   */
++  function makeXhr() {
++    if (window.XMLHttpRequest) {
++      return new XMLHttpRequest();
++    } else if (window.ActiveXObject) {
++      var x = new ActiveXObject("Msxml2.XMLHTTP");
++      if (!x) {
++        x = new ActiveXObject("Microsoft.XMLHTTP");
++      }
++      return x;
++    }
++  }
++
++  var UNPARSEABLE_CRUFT = "throw 1; < don't be evil' >";
++
++  /**
++   * Handles XHR callback processing.
++   *
++   * @param {String} url
++   * @param {Function} callback
++   * @param {Object} params
++   * @param {Object} xobj
++   */
++  function processResponse(url, callback, params, xobj) {
++    if (xobj.readyState !== 4) {
++      return;
++    }
++    if (xobj.status !== 200) {
++      // TODO Need to work on standardizing errors
++      callback({errors : ["Error " + xobj.status] });
++      return;
++    }
++    var txt = xobj.responseText;
++    // remove unparseable cruft.
++    // TODO: really remove this by eliminating it. It's not any real security
++    //    to begin with, and we can solve this problem by using post requests
++    //    and / or passing the url in the http headers.
++    txt = txt.substr(UNPARSEABLE_CRUFT.length);
++    var data = gadgets.json.parse(txt);
++    data = data[url];
++    var resp = {
++     text: data.body,
++     errors: []
++    };
++    switch (params.CONTENT_TYPE) {
++      case "JSON":
++      case "FEED":
++        resp.data = gadgets.json.parse(resp.text);
++        if (!resp.data) {
++          resp.errors.push("failed to parse JSON");
++          resp.data = null;
++        }
++        break;
++      case "DOM":
++        var dom;
++        if (window.ActiveXObject) {
++          dom = new ActiveXObject("Microsoft.XMLDOM");
++          dom.async = false;
++          dom.validateOnParse = false;
++          dom.resolveExternals = false;
++          if (!dom.loadXML(resp.text)) {
++            resp.errors.push("failed to parse XML");
++          } else {
++            resp.data = dom;
++          }
++        } else {
++          var parser = new DOMParser();
++          dom = parser.parseFromString(resp.text, "text/xml");
++          if ("parsererror" === dom.documentElement.nodeName) {
++            resp.errors.push("failed to parse XML");
++          } else {
++            resp.data = dom;
++          }
++        }
++        break;
++      default:
++        resp.data = resp.text;
++        break;
++    }
++    callback(resp);
++  }
++
++  return /** @scope gadgets.io */ {
++    /**
++     * Fetches content from the provided URL and feeds that content into the
++     * callback function.
++     *
++     * Example:
++     * <pre>
++     * gadgets.io.makeRequest(url, fn,
++     *    {contentType: gadgets.io.ContentType.FEED});
++     * </pre>
++     *
++     * @param {String} url The URL where the content is located
++     * @param {Function} callback The function to call with the data from the
++     *     URL once it is fetched
++     * @param {Map.&lt;gadgets.io.RequestParameters, Object&gt;} opt_params
++     *     Additional
++     *     <a href="gadgets.io.RequestParameters.html">parameters</a>
++     *     to pass to the request
++     *
++     * @member gadgets.io
++     */
++    makeRequest : function (url, callback, opt_params) {
++      // TODO: This method also needs to respect all members of
++      // gadgets.io.RequestParameters, and validate them.
++      var xhr = makeXhr();
++      var params = opt_params || {};
++
++      xhr.open("POST", config.jsonProxyUrl, true);
++      if (callback) {
++        xhr.onreadystatechange = gadgets.util.makeClosure(
++            null, processResponse, url, callback, params, xhr);
++      }
++      // We always send a POST request; we just hide the details.
++      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
++
++      // Check if authorization is requested
++      var auth, st;
++      if (params.AUTHORIZATION && params.AUTHORIZATION !== "NONE") {
++        auth = params.AUTHORIZATION.toLowerCase();
++        st = gadgets.util.getUrlParameters().st;
++      }
++
++      var headers = params.HEADERS || {};
++      if (params.METHOD === "POST" && !headers["Content-Type"]) {
++        headers["Content-Type"] = "application/x-www-form-urlencoded";
++      }
++
++      var postData = {
++        url: url,
++        httpMethod : params.METHOD || "GET",
++        headers: gadgets.io.encodeValues(headers),
++        postData : params.POST_DATA || "",
++        authz : auth || "",
++        st : st || "",
++      };
++      xhr.send(gadgets.io.encodeValues(postData));
++    },
++
++    /**
++     * Converts an input object into a URL-encoded data string.
++     * (key=value&amp;...)
++     *
++     * @param {Object} fields The post fields you wish to encode
++     * @return {String} The processed post data in www-form-urlencoded format.
++     *
++     * @member gadgets.io
++     */
++    encodeValues : function (fields) {
++      var buf = [];
++      var first = false;
++      for (var i in fields) {
++        if (!first) {
++          first = true;
++        } else {
++          buf.push("&");
++        }
++        buf.push(encodeURIComponent(i));
++        buf.push("=");
++        buf.push(encodeURIComponent(fields[i]));
++      }
++      return buf.join("");
++    },
++
++    /**
++     * Gets the proxy version of the passed-in URL.
++     *
++     * @param {String} url The URL to get the proxy URL for
++     * @return {String} The proxied version of the URL
++     *
++     * @member gadgets.io
++     */
++    getProxyUrl : function (url) {
++      return config.proxyUrl.replace("%url%", encodeURIComponent(url));
++    },
++
++    /**
++     * Initializes fetchers
++     *
++     * @param {Object} configuration Configuration settings
++     *     Required:
++     *       - proxyUrl: The url for content proxy requests. Include %url%
++     *           as a placeholder for the actual url.
++     *       - jsonProxyUrl: The url for dynamic proxy requests. Include %url%
++     *           as a placeholder for the actual url.
++     * @private
++     */
++    init : function (configuration) {
++      config = configuration;
++      if (!config.proxyUrl || !config.jsonProxyUrl) {
++        throw new Error("proxyUrl and jsonProxyUrl are required.");
++      }
++    }
++  };
++}();
++
++gadgets.io.RequestParameters = gadgets.util.makeEnum([
++  "METHOD",
++  "CONTENT_TYPE",
++  "POST_DATA",
++  "HEADERS",
++  "AUTHORIZATION",
++  "NUM_ENTRIES",
++  "GET_SUMMARIES"
++]);
++
++// PUT, DELETE, and HEAD not supported currently.
++gadgets.io.MethodType = gadgets.util.makeEnum([
++  "GET", "POST", "PUT", "DELETE", "HEAD"
++]);
++
++gadgets.io.ContentType = gadgets.util.makeEnum([
++  "TEXT", "DOM", "JSON", "FEED"
++]);
++
++gadgets.io.AuthorizationType = gadgets.util.makeEnum([
++  "NONE", "SIGNED", "AUTHENTICATED"
++]);
+\ No newline at end of file
+diff -urN php-old/gadgets/features/core/json.js php-new/gadgets/features/core/json.js
+--- php-old/gadgets/features/core/json.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/core/json.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,173 @@
++/*
++Copyright (c) 2005 JSON.org
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The Software shall be used for Good, not Evil.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
++*/
++
++/**
++ * @fileoverview
++ * The global object gadgets.json contains two methods.
++ *
++ * gadgets.json.stringify(value) takes a JavaScript value and produces a JSON
++ * text. The value must not be cyclical.
++ *
++ * gadgets.json.parse(text) takes a JSON text and produces a JavaScript value.
++ * It will return false if there is an error.
++*/
++
++var gadgets = gadgets || {};
++
++/**
++ * @static
++ * @class Provides operations for translating objects to and from JSON.
++ * @name gadgets.json
++ */
++
++/**
++ * @scope gadgets.json
++ */
++gadgets.json = function () {
++    var m = {
++            '\b': '\\b',
++            '\t': '\\t',
++            '\n': '\\n',
++            '\f': '\\f',
++            '\r': '\\r',
++            '"' : '\\"',
++            '\\': '\\\\'
++        },
++        s = {
++            'boolean': function (x) {
++                return String(x);
++            },
++           /** @private */
++            number: function (x) {
++                return isFinite(x) ? String(x) : 'null';
++            },
++            /** @private */
++            string: function (x) {
++                if (/["\\\x00-\x1f]/.test(x)) {
++                    x = x.replace(/([\x00-\x1f\\"])/g, function(a, b) {
++                        var c = m[b];
++                        if (c) {
++                            return c;
++                        }
++                        c = b.charCodeAt();
++                        return '\\u00' +
++                            Math.floor(c / 16).toString(16) +
++                            (c % 16).toString(16);
++                    });
++                }
++                return '"' + x + '"';
++            },
++            /** @private */
++            object: function (x) {
++                if (x) {
++                    var a = [], b, f, i, l, v;
++                    if (x instanceof Array) {
++                        a[0] = '[';
++                        l = x.length;
++                        for (i = 0; i < l; i += 1) {
++                            v = x[i];
++                            f = s[typeof v];
++                            if (f) {
++                                v = f(v);
++                                if (typeof v == 'string') {
++                                    if (b) {
++                                        a[a.length] = ',';
++                                    }
++                                    a[a.length] = v;
++                                    b = true;
++                                }
++                            }
++                        }
++                        a[a.length] = ']';
++                    } else if (typeof x.hasOwnProperty === 'function') {
++                        a[0] = '{';
++                        for (i in x) {
++                            if (x.hasOwnProperty(i)) {
++                                v = x[i];
++                                f = s[typeof v];
++                                if (f) {
++                                    v = f(v);
++                                    if (typeof v == 'string') {
++                                        if (b) {
++                                            a[a.length] = ',';
++                                        }
++                                        a.push(s.string(i), ':', v);
++                                        b = true;
++                                    }
++                                }
++                            }
++                        }
++                        a[a.length] = '}';
++                    } else {
++                        return;
++                    }
++                    return a.join('');
++                }
++                return 'null';
++            }
++        };
++    return {
++        copyright: '(c)2005 JSON.org',
++        license: 'http://www.JSON.org/license.html',
++
++        /**
++         * Converts a JavaScript value to a JSON string.
++         *
++         * @param {Object} v The object to convert
++         * @return {String} The JSON equivalent
++	 *
++         * @member gadgets.json
++         */
++        stringify: function (v) {
++            var f = s[typeof v];
++            if (f) {
++                v = f(v);
++                if (typeof v == 'string') {
++                    return v;
++                }
++            }
++            return null;
++        },
++
++        /**
++         * Parses a JSON string, producing a JavaScript value.
++         *
++         * @param {String} text The string to transform into an object &mdash;
++	 *     usually the result of a previous stringify call
++         * @return {Object} The object parsed from the passed in text; false if
++         *     an error occurred
++	 *
++         * @member gadgets.json
++         */
++        parse: function (text) {
++            try {
++                return !(/[^,:{}\[\]0-9.\-+Eaeflnr-u \n\r\t]/.test(
++                        text.replace(/("(\\.|[^"\\])*")|('(\\.|[^'\\])*')/g, ''))) &&
++                    eval('(' + text + ')');
++            } catch (e) {
++                return false;
++            }
++        }
++    };
++}();
++
++var JSON = gadgets.json;
++
+diff -urN php-old/gadgets/features/core/legacy.js php-new/gadgets/features/core/legacy.js
+--- php-old/gadgets/features/core/legacy.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/core/legacy.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,232 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++ // All functions in this file should be treated as deprecated legacy routines.
++ // Gadget authors are explicitly discouraged from using any of them.
++
++var _IG_Prefs = gadgets.Prefs;
++
++// Yes, these technically modifiy gadget.Prefs as well. Unfortunately,
++// simply setting IG_Prefs.prototype to a new gadgets.Prefs object means
++// that we'd have to duplicate the gadgets.Prefs constructor.
++_IG_Prefs._parseURL = gadgets.Prefs.parseUrl;
++
++function _IG_Fetch_wrapper(callback, obj) {
++  callback(obj.data);
++}
++
++function _IG_FetchContent(url, callback, opt_params) {
++  var params = opt_params || {};
++  var cb = gadgets.util.makeClosure(null, _IG_Fetch_wrapper, callback);
++  gadgets.io.makeRequest(url, cb, params);
++}
++
++function _IG_FetchXmlContent(url, callback, opt_params) {
++  var params = opt_params || {};
++  params.CONTENT_TYPE = "DOM";
++  var cb = gadgets.util.makeClosure(null, _IG_Fetch_wrapper, callback);
++  gadgets.io.makeRequest(url, cb, params);
++}
++
++// TODO: The server doesn't actually support FEED. Fix this!
++function _IG_FetchFeedAsJSON(url, callback, numItems, getDescriptions,
++                             opt_params) {
++  var params = opt_params || {};
++  params.CONTENT_TYPE = "FEED";
++  params.NUM_ENTRIES = numItems;
++  params.GET_SUMMARIES = getDescriptions;
++  gadgets.io.makeRequest(url, callback, params);
++}
++
++function _IG_GetCachedUrl(url) {
++  return gadgets.io.getProxyUrl(url);
++}
++function _IG_GetImageUrl(url) {
++  return gadgets.io.getProxyUrl(url);
++}
++
++function _IG_RegisterOnloadHandler(callback) {
++  gadgets.util.registerOnLoadHandler(callback);
++}
++
++var _args = gadgets.util.getUrlParameters;
++
++/**
++ * Fetches an object by document id.
++ *
++ * @param {String | Object} el The element you wish to fetch. You may pass
++ *     an object in which allows this to be called regardless of whether or
++ *     not the type of the input is known.
++ * @return {HTMLElement} The element, if it exists in the document, or null.
++ */
++function _gel(el) {
++  return document.getElementById ? document.getElementById(el) : null;
++}
++
++/**
++ * Fetches elements by tag name.
++ * This is functionally identical to document.getElementsByTagName()
++ *
++ * @param {String} tag The tag to match elements against.
++ * @return {Array.<HTMLElement>} All elements of this tag type.
++ */
++function _gelstn(tag) {
++  if (n === "*" && document.all) {
++    return document.all;
++  }
++  return document.getElementsByTagName ?
++         document.getElementsByTagName(n) : [];
++}
++
++/**
++ * Fetches elements with ids matching a given regular expression.
++ *
++ * @param {tagName} tag The tag to match elements against.
++ * @param {RegEx} regex The expression to match.
++ * @return {Array.<HTMLElement>} All elements of this tag type that match
++ *     regex.
++ */
++function _gelsbyregex(tagName, regex) {
++  var matchingTags = _gelstn(tagName);
++  var matchingRegex = [];
++  for (var i = 0, j = matchingTags.length; i < j; ++i) {
++    if (regex.test(matchingTags[i].id)) {
++      matchingRegex.push(matchingTags[i]);
++    }
++  }
++  return matchingRegex;
++}
++
++/**
++ * URI escapes the given string.
++ * @param {String} str The string to escape.
++ * @return {String} The escaped string.
++ */
++function _esc(str) {
++  return window.encodeURIComponent ? encodeURIComponent(str) : escape(str);
++}
++
++/**
++ * URI unescapes the given string.
++ * @param {String} str The string to unescape.
++ * @return {String} The unescaped string.
++ */
++function _unesc(str) {
++  return window.decodeURIComponent ? decodeURIComponent(str) : unescape(str);
++}
++
++/**
++ * Encodes HTML entities such as <, " and >.
++ *
++ * @param {String} str The string to escape.
++ * @return The escaped string.
++ */
++function _hesc(str) {
++  // '<' and '>'
++  str = str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
++  // '"' and '
++  str = str.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
++
++  return str;
++}
++
++/**
++ * Removes HTML tags from the given input string.
++ *
++ * @param {String} str The string to strip.
++ * @return The stripped string.
++ */
++function _striptags(str) {
++  return s.replace(/<\/?[^>]+>/g, "");
++}
++
++/**
++ * Trims leading & trailing whitespace from the given string.
++ *
++ * @param {String} str The string to trim.
++ * @return {String} The trimmed string.
++ */
++function _trim(str) {
++  return str.replace(/^\s+|\s+$/g, "");
++}
++
++/**
++ * Toggles the given element between being shown and block-style display.
++ *
++ * @param {String | HTMLElement} el The element to toggle.
++ */
++function _toggle(el) {
++  el = _gel(el);
++  if (el !== null) {
++    if (el.style.display.length === 0 || el.style.display === "block") {
++      el.style.display = "none";
++    } else if (el.style.display === "none") {
++      el.style.display = "block";
++    }
++  }
++}
++
++/**
++ * {Number} A counter used by uniqueId().
++ */
++var _global_legacy_uidCounter = 0;
++
++/**
++ * @return a unique number.
++ */
++function _uid() {
++  return _global_legacy_uidCounter++;
++}
++
++/**
++ * @param {Number} a
++ * @param {Number} b
++ * @return The lesser of a or b.
++ */
++function _min(a, b) {
++  return (a < b ? a : b);
++}
++
++/**
++ * @param {Number} a
++ * @param {Number} b
++ * @return The greater of a or b.
++ */
++function _max(a, b) {
++  return (a > b ? a : b);
++}
++
++/**
++ * @param {String} name
++ * @param {Array.<String | Object>} sym
++ */
++function _exportSymbols(name, sym) {
++  var obj = {};
++  for (var i = 0, j = sym.length; i < j; i += 2) {
++    obj[sym[i]] = sym[i + 1];
++  }
++  var parts = name.split(".");
++  var attach = window;
++  for (var i = 0, j = parts.length - 1; i < j; ++i) {
++    var tmp = {};
++    attach[parts[i]] = tmp;
++    attach = tmp;
++  }
++  attach[parts[parts.length - 1]] = obj;
++}
+diff -urN php-old/gadgets/features/core/prefs.js php-new/gadgets/features/core/prefs.js
+--- php-old/gadgets/features/core/prefs.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/core/prefs.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,371 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++/**
++ * @fileoverview
++ *
++ * Provides access to user prefs, module dimensions, and messages.
++ *
++ * Clients can access their preferences by constructing an instance of
++ * gadgets.Prefs and passing in their module id.  Example:
++ *
++ *   var prefs = new gadgets.Prefs();
++ *   var name = prefs.getString("name");
++ *   var lang = prefs.getLang();
++ *
++ * Modules with type=url can also use this library to parse arguments passed
++ * by URL, but this is not the common case:
++ *
++ *   &lt;script src="http://apache.org/shindig/prefs.js"&gt;&lt;/script&gt;
++ *   &lt;script&gt;
++ *   gadgets.Prefs.parseUrl();
++ *   var prefs = new gadgets.Prefs();
++ *   var name = prefs.getString("name");
++ *   &lt;/script&lg;
++ */
++
++var gadgets = gadgets || {};
++
++/**
++ * Stores preferences for the default shindig implementation.
++ * @private
++ */
++gadgets.prefs_ = function() {
++  var modules = {};
++
++  /**
++   * Returns the module named by moduleId
++   * @param {Number | String} moduleId The module id to fetch
++   * @return {Object} An object containing module data
++   */
++  function getModuleData(moduleId) {
++    if (!modules[moduleId]) {
++      modules[moduleId] = {
++        prefs:{},
++        msgs:{},
++        language:"all",
++        country:"all"
++      };
++    }
++    return modules[moduleId];
++  }
++
++  /**
++   * Adds a new user preference to the stored set for the given module id.
++   *
++   * @param {String | Number} moduleId The module id to add the pref for
++   * @param {String} key The key to add; may be an object where keys = key and
++   *     values = value
++   * @param {String} opt_value An optional value used to set the value of the
++   *     key.
++   */
++  function setPref(moduleId, key, opt_value) {
++    var module = getModuleData(moduleId);
++    if (typeof key !== "string") {
++      for (var i in key) {
++        module.prefs[i] = key[i];
++      }
++    } else {
++      module.prefs[key] = opt_value;
++    }
++  }
++
++  /**
++   * Adds a new message to the stored set for the given module id.
++   *
++   * @param {String | Number} moduleId The module id to add the pref for
++   * @param {String | Object} key The key to add; may be an object where keys =
++   *     key and values = value
++   * @param {String} opt_value An optional value used to set the value of the
++   *     key.
++   */
++  function setMsg(moduleId, key, opt_value) {
++    var module = getModuleData(moduleId);
++    if (typeof key !== "string") {
++      for (var i in key) {
++        module.msgs[i] = key[i];
++      }
++    } else {
++      module.msgs[key] = opt_value;
++    }
++  }
++
++  var defaultModuleId = 0;
++
++  /**
++   * Sets the default module id.
++   *
++   * @param {String | Number} moduleId The module id to set as default
++   */
++  function setDefaultModuleId(moduleId) {
++    defaultModuleId = moduleId;
++  }
++
++  /**
++   * Gets the default module id.
++   *
++   * @return {String | Number} The default module id
++   */
++  function getDefaultModuleId() {
++    return defaultModuleId;
++  }
++
++  /**
++   * Sets the default language for this module id.
++   *
++   * @param {String | Number} moduleId The module id to set the language for
++   * @param {String} language The language code as an ISO 639-1 code
++   */
++  function setLanguage(moduleId, language) {
++    getModuleData(moduleId).language = language;
++  }
++
++  /**
++   * Sets the default country for this module id.
++   *
++   * @param {String | Number} moduleId The id of the gagdet instance
++   * @param {String} country The country code as an ISO 3166-1 alpha-2 code
++   */
++  function setCountry(moduleId, country) {
++    getModuleData(moduleId).country = country;
++  }
++
++  // Export public API for the gadget container code. Gadget authors should
++  // not use this class.
++  return {
++    setPref: setPref,
++    setMsg: setMsg,
++    setCountry: setCountry,
++    setLanguage: setLanguage,
++    getModuleData: getModuleData,
++    setDefaultModuleId: setDefaultModuleId,
++    getDefaultModuleId: getDefaultModuleId
++  };
++}();
++
++/**
++ * @class
++ * Provides access to user preferences, module dimensions, and messages.
++ *
++ * Clients can access their preferences by constructing an instance of
++ * gadgets.Prefs and passing in their module id.  Example:
++ *
++<pre>var prefs = new gadgets.Prefs();
++var name = prefs.getString("name");
++var lang = prefs.getLang();</pre>
++ *
++ * @description Creates a new Prefs object.
++ * @param {String | Number} opt_moduleId An optional parameter specifying the
++ *     module id to create prefs for; if not provided, the default module id
++ *     is used
++ */
++gadgets.Prefs = function(opt_moduleId) {
++  if (typeof opt_moduleId === "undefined") {
++    this.moduleId_ = gadgets.prefs_.getDefaultModuleId();
++  } else {
++    this.moduleId_ = opt_moduleId;
++  }
++  this.data_ = gadgets.prefs_.getModuleData(this.moduleId_);
++  // This is used to eliminate one hash table lookup per value fetched.
++  this.prefs_ = this.data_.prefs;
++  this.msgs_ = this.data_.msgs;
++};
++
++/**
++ * @static
++ * @method
++ * @scope gadgets.Prefs
++ *
++ * Static pref parser. Parses all parameters from the url and stores them
++ * for later use when creating a new gadgets.Prefs object.
++ * You should only ever call this if you are a type=url gadget.
++ *
++ * @param {String | Number} moduleId The id of the gadget instance
++ * @private
++ */
++gadgets.Prefs.parseUrl = function(moduleId) {
++  var prefs = {};
++  var msgs = {};
++  var country = "all";
++  var language = "all";
++  if (gadgets.util) {
++    var params = gadgets.util.getUrlParameters();
++    for (var i in params) {
++      if (i.indexOf("up_") === 0 && i.length > 3) {
++        prefs[i.substr(3)] = String(params[i]);
++      } else if (i.indexOf("msg_") === 0 && i.length > 4) {
++        msgs[i.substr(4)] = String(params[i]);
++      } else if (i === "country") {
++        country = params[i];
++      } else if (i === "lang") {
++        language = params[i];
++      } else if (i === "mid") {
++        moduleId = params[i];
++      }
++    }
++  }
++  gadgets.prefs_.setDefaultModuleId(moduleId);
++  gadgets.prefs_.setPref(moduleId, prefs);
++  gadgets.prefs_.setMsg(moduleId, msgs);
++  gadgets.prefs_.setLanguage(moduleId, language);
++  gadgets.prefs_.setCountry(moduleId, country);
++};
++
++/**
++ * Internal helper for pref fetching.
++ * @param {String} key The key to fetch
++ * @return {Object} The preference
++ * @private
++ */
++gadgets.Prefs.prototype.getPref_ = function(key) {
++  var val = this.prefs_[key];
++  return typeof val === "undefined" ? null : val;
++}
++
++/**
++ * Retrieves a preference as a string.
++ * @param {String} key The preference to fetch
++ * @return {String} The preference; if not set, an empty string
++ */
++gadgets.Prefs.prototype.getString = function(key) {
++  var val = this.getPref_(key);
++  return val === null ? "" : val;
++};
++
++/**
++ * Retrieves a preference as an integer.
++ * @param {String} key The preference to fetch
++ * @return {Number} The preference; if not set, 0
++ */
++gadgets.Prefs.prototype.getInt = function(key) {
++  var val = parseInt(this.getPref_(key), 10);
++  return isNaN(val) ? 0 : val;
++};
++
++/**
++ * Retrieves a preference as a floating-point value.
++ * @param {String} key The preference to fetch
++ * @return {Number} The preference; if not set, 0
++ */
++gadgets.Prefs.prototype.getFloat = function(key) {
++  var val = parseFloat(this.getPref_(key));
++  return isNaN(val) ? 0 : val;
++};
++
++/**
++ * Retrieves a preference as a boolean.
++ * @param {String} key The preference to fetch
++ * @return {Boolean} The preference; if not set, false
++ */
++gadgets.Prefs.prototype.getBool = function(key) {
++  var val = this.getPref_(key);
++  if (val !== null) {
++    return val === "true" || val === true || !!parseInt(val, 10);
++  }
++  return false;
++};
++
++/**
++ * Stores a preference.
++ * To use this call,
++ * the gadget must require the feature setprefs.
++ *
++ * <p class="note">
++ * <b>Note:</b>
++ * If the gadget needs to store an Array it should use setArray instead of
++ * this call.
++ * </p>
++ *
++ * @param {String} key The pref to store
++ * @param {Object} val The values to store
++ */
++gadgets.Prefs.prototype.set = function(key, value) {
++  throw new Error("setprefs feature required to make this call.");
++};
++
++/**
++ * Retrieves a preference as an array.
++ * UserPref values that were not declared as lists are treated as
++ * one-element arrays.
++ *
++ * @param {String} key The preference to fetch
++ * @return {Array.&lt;String&gt;} The preference; if not set, an empty array
++ */
++gadgets.Prefs.prototype.getArray = function(key) {
++  var val = this.getPref_(key);
++  if (val !== null) {
++    var arr = val.split("|");
++    // Decode pipe characters.
++    for (var i = 0, j = arr.length; i < j; ++i) {
++      arr[i] = arr[i].replace(/%7C/g, "|");
++    }
++    return arr;
++  }
++  return [];
++};
++
++/**
++ * Stores an array preference.
++ * To use this call,
++ * the gadget must require the feature setprefs.
++ *
++ * @param {String} key The pref to store
++ * @param {Array} val The values to store
++ */
++gadgets.Prefs.prototype.setArray = function(key, val) {
++  throw new Error("setprefs feature required to make this call.");
++};
++
++/**
++ * Fetches an unformatted message.
++ * @param {String} key The message to fetch
++ * @return {String} The message
++ */
++gadgets.Prefs.prototype.getMsg = function(key) {
++  var val = this.msgs_[key];
++  return typeof val === "undefined" ? "" : val;
++};
++
++/**
++ * Gets the current country, returned as ISO 3166-1 alpha-2 code.
++ *
++ * @return {String} The country for this module instance
++ */
++gadgets.Prefs.prototype.getCountry = function() {
++  return this.data_.country;
++};
++
++/**
++ * Gets the current language the gadget should use when rendering, returned as a
++ * ISO 639-1 language code.
++ *
++ * @return {String} The language for this module instance
++ */
++gadgets.Prefs.prototype.getLang = function() {
++  return this.data_.language;
++};
++
++/**
++ * Gets the module id for the current instance.
++ *
++ * @return {String | Number} The module id for this module instance
++ */
++gadgets.Prefs.prototype.getModuleId = function() {
++  return this.moduleId_;
++};
+diff -urN php-old/gadgets/features/core/util.js php-new/gadgets/features/core/util.js
+--- php-old/gadgets/features/core/util.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/core/util.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,193 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++var gadgets = gadgets || {};
++
++/**
++ * @fileoverview General purpose utilities that gadgets can use.
++ */
++
++/**
++ * @static
++ * @class Provides general-purpose utility functions.
++ * @name gadgets.util
++ */
++
++gadgets.util = function() {
++  /**
++   * Parses URL parameters into an object.
++   * @return {Array.&lt;String&gt;} The parameters
++   */
++  function parseUrlParams() {
++    // Get settings from url, 'hash' takes precedence over 'search' component
++    // don't use document.location.hash due to browser differences.
++    var query;
++    var l = document.location.href;
++    var queryIdx = l.indexOf("?");
++    var hashIdx = l.indexOf("#");
++    if (hashIdx === -1) {
++      query = l.substr(queryIdx + 1);
++    } else {
++      // essentially replaces "#" with "&"
++      query = [l.substr(queryIdx + 1, hashIdx - queryIdx - 1), "&",
++               l.substr(hashIdx + 1)].join("");
++    }
++    return query.split("&");
++  }
++
++  var parameters = null;
++  var features = {};
++  var onLoadHandlers = [];
++
++  return /** @scope gadgets.util */ {
++
++    /**
++     * Gets the URL parameters.
++     *
++     * @return {Object} Parameters passed into the query string
++     * @member gadgets.util
++     * @private Implementation detail.
++     */
++    getUrlParameters : function () {
++      if (parameters !== null) {
++        return parameters;
++      }
++      parameters = {};
++      var pairs = parseUrlParams();
++      var unesc = window.decodeURIComponent ? decodeURIComponent : unescape;
++      for (var i = 0, j = pairs.length; i < j; ++i) {
++        var pos = pairs[i].indexOf('=');
++        if (pos === -1) {
++          continue;
++        }
++        var argName = pairs[i].substring(0, pos);
++        var value = pairs[i].substring(pos + 1);
++        // difference to IG_Prefs, is that args doesn't replace spaces in
++        // argname. Unclear on if it should do:
++        // argname = argname.replace(/\+/g, " ");
++        value = value.replace(/\+/g, " ");
++        parameters[argName] = unesc(value);
++      }
++      return parameters;
++    },
++
++    /**
++     * Creates a closure that is suitable for passing as a callback.
++     * Any number of arguments
++     * may be passed to the callback;
++     * they will be received in the order they are passed in.
++     *
++     * @param {Object} scope The execution scope; may be null if there is no
++     *     need to associate a specific instance of an object with this
++     *     callback
++     * @param {Function} callback The callback to invoke when this is run;
++     *     any arguments passed in will be passed after your initial arguments
++     * @param {Object} var_args Initial arguments to be passed to the callback
++     *
++     * @member gadgets.util
++     * @private Implementation detail.
++     */
++    makeClosure : function (scope, callback, var_args) {
++      // arguments isn't a real array, so we copy it into one.
++      var tmpArgs = [];
++      for (var i = 2, j = arguments.length; i < j; ++i) {
++       tmpArgs.push(arguments[i]);
++      }
++      return function() {
++        // append new arguments.
++        for (var i = 0, j = arguments.length; i < j; ++i) {
++          tmpArgs.push(arguments[i]);
++        }
++        callback.apply(scope, tmpArgs);
++      };
++    },
++
++    /**
++     * Utility function for generating an "enum" from an array.
++     *
++     * @param {Array.<String>} values The values to generate.
++     * @return {Map&lt;String,String&gt;} An object with member fields to handle
++     *   the enum.
++     *
++     * @private Implementation detail.
++     */
++    makeEnum : function (values) {
++      var obj = {};
++      for (var i = 0, v; v = values[i]; ++i) {
++        obj[v] = v;
++      }
++      return obj;
++    },
++
++    /**
++     * Gets the feature parameters.
++     *
++     * @param {String} feature The feature to get parameters for
++     * @return {Object} The parameters for the given feature, or null
++     *
++     * @member gadgets.util
++     */
++    getFeatureParameters : function (feature) {
++      return typeof features[feature] === "undefined"
++          ? null : features[feature];
++    },
++
++    /**
++     * Returns whether the current feature is supported.
++     *
++     * @param {String} feature The feature to test for
++     * @return {Boolean} True if the feature is supported
++     *
++     * @member gadgets.util
++     */
++    hasFeature : function (feature) {
++      return typeof features[feature] === "undefined";
++    },
++
++    /**
++     * Registers an onload handler.
++     * @param {Function} callback The handler to run
++     *
++     * @member gadgets.util
++     */
++    registerOnLoadHandler : function (callback) {
++      onLoadHandlers.push(callback);
++    },
++
++    /**
++     * Runs all functions registered via registerOnLoadHandler.
++     * @private Only to be used by the container, not gadgets.
++     */
++    runOnLoadHandlers : function () {
++      for (var i = 0, j = onLoadHandlers.length; i < j; ++i) {
++        onLoadHandlers[i]();
++      }
++    },
++
++    /**
++     * @param {Object} featureData The features that are supported, and
++     *    their parameters.
++     * @private Only to be used by the container, not gadgets.
++     */
++    init : function (featureData) {
++      features = featureData;
++    }
++  };
++}();
++
+diff -urN php-old/gadgets/features/dynamic-height/dynamic-height.js php-new/gadgets/features/dynamic-height/dynamic-height.js
+--- php-old/gadgets/features/dynamic-height/dynamic-height.js	1970-01-01 01:00:00.000000000 +0100
++++ php-new/gadgets/features/dynamic-height/dynamic-height.js	2008-03-02 16:32:44.000000000 +0100
+@@ -0,0 +1,140 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements. See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership. The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License. You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/l

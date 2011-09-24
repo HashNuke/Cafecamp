@@ -1,0 +1,428 @@
+body
+{
+    font-family:sans-serif;
+    font-size:12px;
+    margin:0.0em;
+}
+
+#morelink
+{
+	text-decoration: none;
+}
+
+#prfnav
+{
+	text-align: center;
+}
+
+#prfnav a
+{
+	text-decoration: none;
+	padding: 2px 2px 2px 20px;
+    font-size: 12px;
+	font-weight: normal;
+}
+
+#theimg
+{
+	padding:2px 2px 2px 2px;
+}
+
+span.tag {
+	padding-left: 0.6em;
+	color: #999;
+	font-family: Verdana, Helvetica, Arial, Sans-serif;
+	font-size: 11px;
+}
+
+#bqt
+{
+	color:#cccccc;
+	font-size:20px;
+}
+
+
+ul#appcol
+{
+	list-style: none;
+	padding:0px;
+}
+
+
+td 
+{
+    font-family:sans-serif;
+    font-size:12px;
+}
+
+#cafecamp_logo
+{
+    border-right:1px solid #EAF3FB;
+}
+
+a
+{
+    color:#0066cc;
+}
+
+input#searchbox
+{
+    border:1px solid #FEDD92;
+    background:#FFEFCC;
+    padding:2px 2px 2px 2px;
+}
+
+input#searchbox:focus
+{
+    border:1px solid #FEDD92;
+    background:#FFFFFF;
+    padding:2px 2px 2px 2px;
+}
+
+.pagepack
+{
+    font-family:sans-serif;
+    font-size:12px;
+    padding:0px;
+    width:800px;
+}
+
+.pageheader
+{
+    font-size:13px;
+    background:#ffffff;
+    border-bottom:1px solid #87ADDA;
+    border-left:1px solid #87ADDA;
+    border-right:1px solid #87ADDA;
+    padding:0px;
+    text-align:left;
+}
+    
+#packheader
+{
+    border-bottom:3px solid #E5ECF9;
+    border-left:3px solid #E5ECF9;
+    border-right:3px solid #E5ECF9;
+}
+
+.box
+{
+    font-size:13px;
+    background:#ffffff;
+    border-top:1px solid #87ADDA;
+    border-bottom:1px solid #87ADDA;
+    border-left:1px solid #87ADDA;
+    border-right:1px solid #87ADDA;
+    padding:5px 5px 5px 5px;
+    text-align:left;
+}
+    
+#packbox
+{
+    border-top:3px solid #E5ECF9;
+    border-bottom:3px solid #E5ECF9;
+    border-left:3px solid #E5ECF9;
+    border-right:3px solid #E5ECF9;
+}
+
+#boxtitle
+{
+    padding: 0px 5px 5px 5px;
+    color: #77B33C;
+    font-weight: bold;
+    font-size:105%;
+    text-align: center;
+}
+
+#briefinfo
+{
+    color:#666666;
+}
+
+#tabcontent
+{
+    color:#000000;
+}
+
+#friendsbox
+{
+    text-align:center;
+}
+
+#navlist a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#userpanel
+{
+    background: #EAF3FB;
+    padding: 4px 4px 4px 4px;
+    text-align: right;
+    font-size: 12px;
+}
+
+#userpanel a
+{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+a#logoutlink
+{
+    color: #CC0033;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 2px 2px 2px 2px;
+}
+
+#shouttext
+{
+    color: #666666;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+#shouttime
+{
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#greenbox
+{
+	background:#EAF3FB;
+	border:1px solid #87ADDA;
+	padding:3px 3px 3px 3px;
+}
+
+#contentbox
+{
+	padding:3px;
+}
+
+input#bigtext
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}
+
+#loginlabel
+{
+	border-bottom:1px solid #87ADDA;
+	padding:3px 3px 3px 3px;
+	font-size:15px;
+	text-align:center;
+	font-weight:bold;
+}
+
+.submit input, .submit input:focus, .button {
+	background: url("../images/fade-butt.png");
+	border: 3px double #999999;
+	border-left-color: #cccccc;
+	border-top-color: #cccccc;
+	color: #555555;
+	padding: 0.25em;
+	font-weight:bold;
+}
+
+.submit input:active, .button:active {
+	background: #f4f4f4;
+	border: 3px double #cccccc;
+	border-left-color: #999999;
+	border-top-color: #999999;
+}
+
+#plinks{
+	font-size:20px;
+}
+
+#wrongpass
+{
+	background:#FED6DA;
+	text-align:left;
+	padding:3px 3px 3px 3px;
+	color:#C10202;
+	font-weight:bold;
+}
+
+a#speciallink
+{
+        text-decoration:none;
+}
+
+#pagetitle
+{    
+	background:#E5ECF9;
+	border-top:1px solid #87ADDA;
+    text-align:center;
+	padding:2px 2px 2px 2px;
+	font-family:sans-serif;
+	font-size:18px;
+	
+}
+
+a#boxedlink
+{
+    text-decoration:none;
+    font-weight:bold;
+    color:#000000;
+}
+
+#whiteline
+{
+    border-bottom:2px solid #ffffff;
+}
+
+#gsnippet
+{
+    color: #888888;    
+}
+
+select
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:20px;
+	color:#555555;
+}
+
+#rightbar
+{
+	border-left: 1px dashed #cccccc;
+}
+
+#rtitle
+{
+	font-size: 12px;
+	font-family:sans-serif;
+	font-weight:bold;
+	border-bottom: 1px dashed #cccccc;;
+}
+
+#tpointer
+{
+	color:#99CC33;
+	font-weight:bold;
+	font-size: 15px;
+}
+
+#rcontent
+{
+	padding: 7px 5px 5px 5px;
+}
+	
+.eip_savebutton { background-color: #fff; color: #fff; background-image: url('images/save.gif');background-repeat: no-repeat; background-position: left;border:0px;padding: 0 0 0 20px;}
+.eip_cancelbutton { background:#ffffff;color: #fff; background-image: url('images/cancel.gif'); background-repeat: no-repeat; background-position: left;border:0px;padding: 0 0 0 20px;}
+.eip_saving { background-image: url('images/ajax-loader.gif'); background-repeat: no-repeat; background-position: left; color: #903; padding: 0 0 0 20px; }
+.eip_empty { color: #afafaf; border: 1px solid #afafaf; padding: 2px 2px 2px 2px;}
+.eip_editfield { background-color: #F2F5FD; border: 1px solid #E5ECF9; padding: 2px;}
+
+
+#docboxtitle
+{
+	padding:10px 0px 0px 0px;
+	border-bottom:1px dashed #666666;
+	font-size:14px;
+	font-weight:bold;
+	color:#333333;
+}
+
+#contentsindex a{
+		font-weight:bold;
+}
+
+#toplink
+{
+	font-size:70%;
+	font-weight:normal;
+}
+
+li{
+padding:3px 0px 0px 0px;
+}
+
+li a{text-decoration:none;}
+
+#successmsg{
+	border:1px solid #68B5C1;
+	font-family:sans-serif;
+	padding:15px 15px 15px 15px;
+	font-size: 14px;
+}
+
+#failmsg{
+	border:1px solid #FF0A0A;
+	font-family:sans-serif;
+	padding:15px 15px 15px 15px;
+	font-size: 14px;
+	color:#ffffff;
+}
+
+textarea {
+  border-bottom:2px solid #dddddd;
+  border-top:2px solid #dddddd;
+  border-right:1px solid #eeeeee;
+  border-left:1px solid #eeeeee;
+  font-family:sans-serif;
+}
+
+#editprofile textarea {
+  border-bottom:2px solid #dddddd;
+  border-top:2px solid #dddddd;
+  border-right:1px solid #eeeeee;
+  border-left:1px solid #eeeeee;
+  font-family:sans-serif;
+  font-size:14px;
+  color:#555555;
+  padding:1px 1px 1px 1px;
+}
+
+input.bigtext
+{
+	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:15px;
+	color:#555555;
+}
+
+#editprofile
+{
+  padding:0px 0px 0px 30px;
+}
+
+#editprofile label{font-size:150%;font-family:serif;}
+#editprofile select
+{	background:#ffffff;
+	border:1px solid #cccccc;
+	padding:1px 1px 1px 1px;
+	font-size:15px;
+	color:#555555;
+}
+
+#editpic
+{
+  text-align:center;
+  background:#ffffff;
+  border:1px dashed #cccccc;
+  width:129px;
+}
+#editpic p
+{
+  text-align:center;
+  border-top:1px dashed #cccccc;
+  padding:2px 2px 2px 2px;
+}
+
+#editpic a
+{
+  text-decoration:none;
+}

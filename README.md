@@ -8,7 +8,7 @@ This repo contains the source code of a social network I developed (and was oper
 
 If you want to get it working. grep the codebase for "some_password" and replace it with the password of the database. And along with it the database name, user and host. Some parts of the site might require the Flickr API. For that grep the codebase for "FLICKR_API" and replace it with Flickr API key and secret.
 
-When I quit working on this, I had already written some part of my own OpenSocial parser, so there is minimal support for OpenSocial apps. Only the gadget spec is implemented as per what I faintly remember, so Google Gadgets can be run on this easily. There are a couple examples in the __appstore__ directory.
+When I quit working on this, I had already written some part of my own OpenSocial parser, so there is minimal support for OpenSocial apps. Only the gadget spec is implemented as per what I faintly remember, so Google Gadgets can be run on this easily. There are a couple example apps (stole them) in the __appstore__ directory. How to add an app to your profile? I don't fucking remember. It was some complex url.
 
 ## Screenshots (All taken in 2008, so don't blame me if it looks different now)
 
